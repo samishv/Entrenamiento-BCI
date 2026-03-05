@@ -51,7 +51,7 @@ TEAL       = "#2BBCD4"
 ORANGE     = "#F5A623"
 GREEN      = "#5CB85C"
 RED_DOT    = "#E74C3C"
-GRAY_TEXT  = "#7F8C8D"
+GRAY_TEXT  = "#282828"
 DARK_TEXT  = "#2C3E50"
 
 # ─── Tipografías ─────────────────────────────────────────────────────────────
@@ -784,6 +784,7 @@ class RegistroPage(tk.Frame):
     def _begin(self):
         self._running    = True
         self._start_time = time.perf_counter()   # momento exacto de inicio
+        self.controller.play_sound("start")
         self._elapsed_ms = 0
         self._history    = []
         self.start_btn.config(text="Detener")
@@ -840,6 +841,7 @@ class RegistroPage(tk.Frame):
     def _finish(self):
         self._running = False
         self.controller.serial_send(CMD_STOP)    # ► Arduino: para de enviar
+        self.controller.play_sound("stop")
         self.start_btn.config(text="Iniciar de nuevo")
         self.instr.config(text="Ensayo completado.")
         self._draw_timer(full=True)
@@ -1027,40 +1029,40 @@ class REPage(tk.Frame):
     
     """
     def __init__(self, parent, controller):
-        super().__init__(parent, bg=NAVY)
+        super().__init__(parent, bg=GRAY_TEXT)
         self.controller  = controller
         self._running    = False
         self._elapsed_ms = 0
 
 
         # Header
-        hdr = tk.Frame(self, bg=NAVY)
+        hdr = tk.Frame(self, bg=GRAY_TEXT)
         hdr.pack(fill="x",padx=70, pady=(50, 0))
 
         tk.Button(hdr, text="← Menú", command=self._go_menu,
-                  bg=NAVY, fg=TEXT_MUTED, font=F_LABEL,
+                  bg=GRAY_TEXT, fg=CARD_WHITE, font=F_LABEL,
                   relief="flat", cursor="hand2").pack(side="right")
         
         # Instrucción
         self.instr = tk.Label(self,
             text=f"Mantente en REPOSO durante {REGISTRO_DURATION} segundos.",
-            font=F_LABEL, fg=TEXT_MUTED, bg=NAVY)
+            font=F_LABEL, fg=CARD_WHITE, bg=GRAY_TEXT)
         self.instr.pack(pady=(16, 0))
         
         # Botón al fondo derecho
-        bot = tk.Frame(self, bg=NAVY)
+        bot = tk.Frame(self, bg=GRAY_TEXT)
         bot.pack(side="bottom", fill="x", padx=70, pady=30)
         tk.Button(bot, text="Continuar →",
                   command=lambda: self._siguiente(),
-                  bg=NAVY, fg=TEXT_MUTED, font=F_LABEL,
+                  bg=GRAY_TEXT, fg=CARD_WHITE, font=F_LABEL,
                   relief="flat", padx=30, pady=12, cursor="hand2").pack(side="right")
         
         
         self.start_btn = tk.Button(bot, text="Iniciar", command=self._toggle,
-                                    bg=NAVY, fg="white", font=F_BTN,
+                                    bg=GRAY_TEXT, fg="white", font=F_BTN,
                                     relief="flat", padx=30, pady=12, cursor="hand2")
         self.start_btn.pack(side="left")
-        self.result_lbl = tk.Label(bot, text="", font=F_LABEL, fg=NAVY, bg=NAVY)
+        self.result_lbl = tk.Label(bot, text="", font=F_LABEL, fg=GRAY_TEXT, bg=GRAY_TEXT)
         self.result_lbl.pack(side="left", padx=30)
 
 
