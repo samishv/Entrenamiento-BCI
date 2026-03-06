@@ -22,7 +22,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 from eeg_uhb import EEGAcquisitionManager
 
-EEG_STREAM_NAME = 'streamTEST'   # <-- cambia al nombre de tu stream
+EEG_STREAM_NAME = 'streamTEST'   # debe ser el mismo que en unicorn lsl
 EEG_SAVE_PATH   = r'C:\Users\ikerf\Desktop\Upiita\TT' #r'C:\Users\lipsp\Documents\Entrenamiento imaginacion'
 EEG_CANALES     = {'Fz': 0, 'C3': 1, 'Cz': 2, 'C4': 3,
                    'Pz': 4, 'PO7': 5, 'Oz': 6, 'PO8': 7}
@@ -201,9 +201,8 @@ def draw_timer_bar(canvas, timer_lbl, elapsed_ms, total_ms, label_fmt="{s} / {t}
 def make_card(parent, border_color, width=100, height=380):
     """Frame con borde de color simulado usando un Frame exterior."""
     outer = tk.Frame(parent, bg=border_color, padx=3, pady=3)
-    inner = tk.Frame(outer, bg=CARD_WHITE, width=width, height=height)
+    inner = tk.Frame(outer, bg=CARD_WHITE)
     inner.pack(fill="both", expand=True)
-    inner.pack_propagate(False)
     return outer, inner
 
 
@@ -221,6 +220,7 @@ class CoherenciaBCI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Coherencia Corticomuscular")
+        self.resizable(True, True)
         self.attributes("-fullscreen", True)
         self.configure(bg=BG_MENU)
         self.bind("<Escape>", lambda e: self.attributes("-fullscreen", False))
@@ -469,7 +469,7 @@ class ConfiguracionPage(tk.Frame):
         tk.Label(id_frame, text="ID de participante:", font=F_LABEL,
                  fg=TEXT_MUTED, bg=CARD_WHITE).pack(side="left", padx=(0, 8))
         self.participanteID = tk.Entry(
-            id_frame, font=F_LABEL, fg=NAVY, bg=CARD_WHITE,
+            id_frame, font=F_LABEL, fg=NAVY, bg=BG_LIGHT,
             relief="flat", width=12, bd=4
         )
         self.participanteID.pack(side="left", ipady=4)
@@ -482,6 +482,8 @@ class ConfiguracionPage(tk.Frame):
         # Columnas equidistantes
         for col in range(3):
             cards_row.columnconfigure(col, weight=1, uniform="col")
+            cards_row.rowconfigure(1, weight=1)
+
 
         self._build_serial_card(cards_row)
         self._build_orden_card(cards_row)
