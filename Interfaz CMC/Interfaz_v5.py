@@ -2,7 +2,7 @@
 """
 Created on Fri Feb 20 01:32:15 2026
 
-@author: ikerf
+@author: samishv
 """
 
 import tkinter as tk
@@ -24,8 +24,8 @@ from eeg_uhb import EEGAcquisitionManager
 
 EEG_STREAM_NAME = 'streamTEST'   # debe ser el mismo que en unicorn lsl
 EEG_SAVE_PATH   = r'C:\Users\ikerf\Desktop\Upiita\TT' #r'C:\Users\lipsp\Documents\Entrenamiento imaginacion'
-EEG_CANALES     = {'Fz': 0, 'C3': 1, 'Cz': 2, 'C4': 3,
-                   'Pz': 4, 'PO7': 5, 'Oz': 6, 'PO8': 7}
+EEG_CANALES     = {'Fz': 0, 'FC3': 1, 'FCz': 2, 'FC4': 3,
+                   'Cz': 4, 'C3': 5, 'NC': 6, 'C4': 7} # NC-not connected
 EEG_VENTANA     = 250   # muestras visibles (1 segundo a 250 Hz)
 EEG_REFRESCO    = 50    # ms entre actualizaciones de la gráfica
 
@@ -283,7 +283,7 @@ class CoherenciaBCI(tk.Tk):
         offset_x    = ancho_total // 2
         win.geometry(f"{offset_x}x{alto}+{offset_x}+0")
         # Para pantalla completa en el secundario descomenta la línea siguiente:
-        # win.attributes("-fullscreen", True)
+        win.attributes("-fullscreen", True)
         # ---------------------------------------------------------------------
 
         self._eeg_window = win
@@ -482,7 +482,7 @@ class ConfiguracionPage(tk.Frame):
         # Columnas equidistantes
         for col in range(3):
             cards_row.columnconfigure(col, weight=1, uniform="col")
-            cards_row.rowconfigure(1, weight=1)
+        cards_row.rowconfigure(1, weight=1)
 
 
         self._build_serial_card(cards_row)
@@ -497,11 +497,17 @@ class ConfiguracionPage(tk.Frame):
         outer, card = make_card(parent, TEAL, height=660)
         outer.grid(row=1, column=0, padx=15, sticky="nsew")
 
+        # Botón
+        btn_frame = tk.Frame(card, bg=CARD_WHITE)
+        btn_frame.pack(side="bottom", pady=30)
+        colored_btn(btn_frame, "Conectar", TEAL,
+                    command=self._conectar).pack()
+        
         # Puerto
         port_row = tk.Frame(card, bg=CARD_WHITE)
         port_row.pack(fill="both", expand=True, padx=20, pady=20)
         tk.Label(port_row, text="Puerto:", font=F_LABEL,
-                 fg=DARK_TEXT, bg=CARD_WHITE).pack(pady=(100, 20))
+                 fg=DARK_TEXT, bg=CARD_WHITE).pack(pady=(80, 20))
         self.puerto = tk.Entry(port_row, font=F_LABEL, fg=DARK_TEXT,
                                bg="#DDE3EE", relief="flat", width=10, bd=4)
         self.puerto.pack()
@@ -509,16 +515,10 @@ class ConfiguracionPage(tk.Frame):
 
         # Status
         tk.Label(port_row, text="Conexión Status", font=F_LABEL,
-                 fg=DARK_TEXT, bg=CARD_WHITE).pack(pady=(100, 8))
+                 fg=DARK_TEXT, bg=CARD_WHITE).pack(pady=(50, 8))
         self.status_dot = tk.Label(port_row, text="△", font=("Helvetica", 32),
                                    fg=RED_DOT, bg=CARD_WHITE)
-        self.status_dot.pack(pady=(0,80))
-
-        # Botón
-        btn_frame = tk.Frame(card, bg=CARD_WHITE)
-        btn_frame.pack(side="bottom", pady=30)
-        colored_btn(btn_frame, "Conectar", TEAL,
-                    command=self._conectar).pack()
+        self.status_dot.pack(pady=(0,0))
 
     # ── Tarjeta 2: Generar orden de sesión ───────────────────────
     def _build_orden_card(self, parent):
@@ -527,6 +527,12 @@ class ConfiguracionPage(tk.Frame):
 
         outer, card = make_card(parent, ORANGE, height=360)
         outer.grid(row=1, column=1, padx=15, sticky="nsew")
+
+        # Botón
+        btn_frame = tk.Frame(card, bg=CARD_WHITE)
+        btn_frame.pack(side="bottom", pady=20)
+        colored_btn(btn_frame, "Generar", ORANGE,
+                    command=self._generar_orden).pack()
 
         # Lista de condiciones (se actualiza al generar)
         self.orden_labels = []
@@ -544,11 +550,6 @@ class ConfiguracionPage(tk.Frame):
             lbl.pack(padx=(50,200))
             self.orden_labels.append(lbl)
 
-        # Botón
-        btn_frame = tk.Frame(card, bg=CARD_WHITE)
-        btn_frame.pack(side="bottom", pady=20)
-        colored_btn(btn_frame, "Generar", ORANGE,
-                    command=self._generar_orden).pack()
 
     # ── Tarjeta 3: Calibración ────────────────────────────────────
     def _build_calibracion_card(self, parent):
@@ -557,6 +558,12 @@ class ConfiguracionPage(tk.Frame):
 
         outer, card = make_card(parent, GREEN_MAIN, height=360)
         outer.grid(row=1, column=2, padx=15, sticky="nsew")
+
+        # Botón
+        btn_frame = tk.Frame(card, bg=CARD_WHITE)
+        btn_frame.pack(side="bottom", pady=20)
+        colored_btn(btn_frame, "Iniciar", GREEN,
+                    command=self._iniciar_calibracion).pack()
         
         img_frame = tk.Frame(card, bg=CARD_WHITE)
         img_frame.pack(fill="both", expand=True, padx=20, pady=20)
@@ -567,12 +574,6 @@ class ConfiguracionPage(tk.Frame):
         lbl.pack(expand=True, pady=(30, 10))
         lbl.img_ref = img_tk
 
-        # Botón
-        btn_frame = tk.Frame(card, bg=CARD_WHITE)
-        btn_frame.pack(side="bottom", pady=20)
-        colored_btn(btn_frame, "Iniciar", GREEN,
-                    command=self._iniciar_calibracion).pack()
-
     # ── Callbacks (conectar con lógica real) ─────────────────────
     def _conectar(self):
         # TODO: lógica de conexión serial
@@ -580,7 +581,7 @@ class ConfiguracionPage(tk.Frame):
 
     def _generar_orden(self):
         condiciones = ["Reposo", "MI", "ME"]
-        
+        self.controller.indice_actual = 0
         random.shuffle(condiciones)          # 3 sin repetir
         orden = condiciones + [random.choice(condiciones)]  # +1 que puede repetir
         self.controller.orden_sesion = orden  #  guardar en controlador
@@ -814,10 +815,11 @@ class CalibracionPage(tk.Frame):
         
     def _siguiente(self):
         ctrl = self.controller
-        
+        print(ctrl.indice_actual)
     
         if ctrl.indice_actual >= len(ctrl.orden_sesion):
-            ctrl.show_frame("MenuPage")
+            ctrl.show_frame("MenuPage")     
+            #ctrl.orden_sesion = []
             return
     
         siguiente_cond = ctrl.orden_sesion[ctrl.indice_actual]
@@ -1146,7 +1148,7 @@ class MIPage(tk.Frame):
         self._running = False
         self.controller.play_sound("finish")
         self.start_btn.config(text="Iniciar de nuevo")
-        self.instr.config(text="Ensayo completado.")
+        self.instr.config(text=f"Presiona INICIAR e imagina el movimiento durante {REGISTRO_DURATION} segundos.")
         self.controller.cerrar_ventana_eeg()
 
     def _reset(self):
