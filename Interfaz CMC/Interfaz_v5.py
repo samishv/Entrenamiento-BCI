@@ -106,7 +106,7 @@ F_ORDER_N  = ("Helvetica", 20, "bold")
 F_ORDER_T  = ("Helvetica", 13)
 
 CALIB_DURATION   = 10   # segundos de calibración
-REGISTRO_DURATION = 30  # segundos de registro
+REGISTRO_DURATION = 32  # segundos de registro
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ def rrect(canvas, x1, y1, x2, y2, r=14, **kw):
 
 
 def draw_graph(canvas, history,
-               pad_l=70, pad_r=24, pad_t=20, pad_b=40,
+               pad_l=70, pad_r=24, pad_t=25, pad_b=35,
                y_max=100, y_ticks=None,
                zone_lo=None, zone_hi=None, show_zone=False):
     """
@@ -131,7 +131,7 @@ def draw_graph(canvas, history,
     w = canvas.winfo_width()
     h = canvas.winfo_height()
     if w < 20 or h < 20:
-        return
+        return  
 
     gw = w - pad_l - pad_r
     gh = h - pad_t - pad_b
@@ -852,7 +852,7 @@ class RegistroPage(tk.Frame):
         # Header
         hdr = tk.Frame(self, bg=BG_LIGHT)
         hdr.pack(fill="x", padx=70, pady=(50, 0))
-        tk.Label(hdr, text="Registro", font=F_HEAD, fg=NAVY,
+        tk.Label(hdr, text="M E", font=F_HEAD, fg=NAVY,
                  bg=BG_LIGHT).pack(side="left")
         tk.Button(hdr, text="← Menú", command=self._go_menu,
                   bg=BG_LIGHT, fg=TEXT_MUTED, font=F_LABEL,
@@ -895,11 +895,6 @@ class RegistroPage(tk.Frame):
         self.bar_cv.pack(fill="x", pady=(8, 0))
         self.bar_cv.bind("<Configure>", lambda e: self._draw_timer())
         
-        # self.warn_lbl = tk.Label(right,
-        #     text="⚠  Sin calibración — referencia: 200 N",
-        #     font=F_SMALL, fg=WARN_RED, bg=BG_LIGHT)
-        # self.warn_lbl.pack(anchor="e")
-        
         # Gráfica
         self.graph = tk.Canvas(self, bg=BG_LIGHT, highlightthickness=0)
         self.graph.pack(fill="both", expand=True, padx=50, pady=(8, 0))
@@ -909,13 +904,7 @@ class RegistroPage(tk.Frame):
     def on_enter(self):
         if self._running:
             self._stop()
-        # max_n = self.controller.max_force.get()
-        # if max_n > 0:
-        #     self.max_lbl.config(text=f"Máx. calibrado: {max_n:.0f} N")
-        #     self.warn_lbl.config(text="")
-        # else:
-        #     self.max_lbl.config(text="Máx. calibrado: -- N")
-        #     self.warn_lbl.config(text="⚠  Sin calibración — referencia: 200 N")
+
         self._reset()
 
     def _go_menu(self):
@@ -994,7 +983,7 @@ class RegistroPage(tk.Frame):
         self.controller.serial_send(CMD_STOP)    # ► Arduino: para de enviar
         self.controller.play_sound("stop")
         self.start_btn.config(text="Iniciar de nuevo")
-        self.instr.config(text="Ensayo completado.")
+        self.instr.config(text=f"Presiona INICIAR y mantén tu fuerza en la zona verde durante {REGISTRO_DURATION} segundos.")
         self._draw_timer(full=True)
         self.controller.cerrar_ventana_eeg()
 
@@ -1015,7 +1004,7 @@ class RegistroPage(tk.Frame):
         draw_graph(self.graph, self._history,
                y_max=100,
                y_ticks=[0, 20, 40, 60, 80, 100],
-               zone_lo=20, zone_hi=40, show_zone=True)
+               zone_lo=25, zone_hi=35, show_zone=True)
     
         # Dibujar el valor encima de la gráfica, esquina superior izquierda
         pct = self._history[-1] if self._history else None
@@ -1264,7 +1253,7 @@ class REPage(tk.Frame):
         self._running = False
         self.controller.play_sound("finish")
         self.start_btn.config(text="Iniciar de nuevo")
-        self.instr.config(text="Ensayo completado.")
+        self.instr.config(text=f"Presiona INICIAR e imagina el movimiento durante {REGISTRO_DURATION} segundos.")
         self.controller.cerrar_ventana_eeg()
 
     def _reset(self):
