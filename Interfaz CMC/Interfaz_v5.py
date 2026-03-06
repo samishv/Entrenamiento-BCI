@@ -313,9 +313,29 @@ class CoherenciaBCI(tk.Tk):
 
         self._actualizar_eeg()
 
-    def cerrar_ventana_eeg(self):
-        """Detiene la adquisición EEG y cierra la ventana."""
+    def cerrar_ventana_eeg(self, condicion=None):
+        """Detiene la adquisición EEG, renombra el archivo y cierra la ventana."""
         self.eeg.stop_acquisition()
+
+        # ── Renombrar archivo CSV con formato S{id}_EEG_{fecha}_{cond}_{idx} ──
+        if condicion and hasattr(self.eeg, 'filepath'):
+            import os
+            from datetime import datetime
+            try:
+                cfg    = self.frames.get("ConfiguracionPage")
+                pid    = cfg.participanteID.get().strip() if cfg else "X"
+                fecha  = datetime.now().strftime("%d%m%y")
+                indice = self.indice_actual
+                nombre = f"S{pid}_EEG_{fecha}_{condicion}_{indice}.csv"
+
+                carpeta = os.path.dirname(self.eeg.filepath)
+                nuevo   = os.path.join(carpeta, nombre)
+                os.rename(self.eeg.filepath, nuevo)
+                print(f"[EEG] Archivo guardado como: {nombre}")
+            except Exception as e:
+                print(f"[EEG] No se pudo renombrar el archivo: {e}")
+        # ─────────────────────────────────────────────────────────────────────
+
         if self._eeg_window and self._eeg_window.winfo_exists():
             self._eeg_window.destroy()
         self._eeg_window = None
@@ -341,11 +361,11 @@ class CoherenciaBCI(tk.Tk):
 
             for nombre, idx in EEG_CANALES.items():
                 y = np.array([m[idx] for m in ultimos])
-                if len(y) >= 15:
-                    try:
-                        y = _filtrar_eeg(y)
-                    except Exception:
-                        pass
+                # if len(y) >= 15:
+                #     try:
+                #         y = _filtrar_eeg(y)
+                #     except Exception:
+                #         pass
                 self._eeg_lines[nombre].set_data(x, y)
                 if len(y) > 0:
                     p5, p95 = np.percentile(y, [5, 95])
@@ -940,7 +960,7 @@ class RegistroPage(tk.Frame):
         self.start_btn.config(text="Iniciar")
         self.instr.config(
             text=f"Presiona INICIAR y mantén tu fuerza en la zona verde durante {REGISTRO_DURATION} segundos.")
-        self.controller.cerrar_ventana_eeg()
+        self.controller.cerrar_ventana_eeg(condicion="ME")
 
     def _tick(self):
         if not self._running:
@@ -1119,7 +1139,7 @@ class MIPage(tk.Frame):
         self.start_btn.config(text="Iniciar")
         self.instr.config(
             text=f"Presiona INICIAR e imagina el movimiento durante {REGISTRO_DURATION} segundos.")
-        self.controller.cerrar_ventana_eeg()
+        self.controller.cerrar_ventana_eeg(condicion="MI")
 
     def _tick(self):
         if not self._running:
@@ -1235,7 +1255,7 @@ class REPage(tk.Frame):
         self.start_btn.config(text="Iniciar")
         self.instr.config(
             text=f"Presiona INICIAR e imagina el movimiento durante {REGISTRO_DURATION} segundos.")
-        self.controller.cerrar_ventana_eeg()
+        self.controller.cerrar_ventana_eeg(condicion="Reposo")
 
     def _tick(self):
         if not self._running:
