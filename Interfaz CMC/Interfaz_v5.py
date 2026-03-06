@@ -313,6 +313,17 @@ class CoherenciaBCI(tk.Tk):
 
     def abrir_ventana_eeg(self, titulo="EEG en tiempo real", save_path=None):
         """Abre la ventana de visualización EEG en el monitor secundario."""
+
+        COLORES_EEG = {
+                'Fz' : '#2BBCD4',  # teal
+                'FC3' : '#6DC14B',  # verde
+                'FCz' : '#F5A623',  # naranja
+                'FC4' : '#E05555',  # rojo
+                'Cz' : '#9B59B6',  # morado
+                'C3': '#3498DB',  # azul
+                'NC' : '#F39C12',  # amarillo
+                'C4': '#1ABC9C',  # verde agua
+        }
         if self._eeg_window and self._eeg_window.winfo_exists():
             return
 
@@ -337,6 +348,7 @@ class CoherenciaBCI(tk.Tk):
         win.geometry(f"{offset_x}x{alto}+{offset_x}+0")
         # Para pantalla completa en el secundario descomenta la línea siguiente:
         win.attributes("-fullscreen", True)
+        win.configure(bg=GRAY_TEXT)
         # ---------------------------------------------------------------------
 
         self._eeg_window = win
@@ -344,16 +356,22 @@ class CoherenciaBCI(tk.Tk):
 
         fig, axes = plt.subplots(len(EEG_CANALES), 1,
                                  figsize=(10, 8), sharex=True)
+        fig.patch.set_facecolor('#282828')  # fondo exterior de la figura
         fig.tight_layout(pad=1.5)
+        fig.subplots_adjust(left=0.08)
         self._eeg_lines = {}
 
         for ax, (nombre, idx) in zip(axes, EEG_CANALES.items()):
-            line, = ax.plot([], [], lw=0.8, color='#2BBCD4')
+            line, = ax.plot([], [], lw=0.9, color=COLORES_EEG[nombre])   
             ax.set_xlim(0, EEG_VENTANA)
-            ax.set_ylabel(nombre, rotation=0, labelpad=25, fontsize=8)
+            ax.set_ylabel(nombre, rotation=0, labelpad=5, fontsize=9, 
+                  ha='right', va='center')
             ax.yaxis.set_tick_params(labelsize=7)
-            ax.set_facecolor('#F5F9FB')
+            ax.set_facecolor("#DEE0E0")
             self._eeg_lines[nombre] = line
+            ax.tick_params(colors='white')
+            ax.yaxis.label.set_color('white')
+            axes[-1].xaxis.label.set_color('white')
 
         axes[-1].set_xlabel("Muestras")
 
