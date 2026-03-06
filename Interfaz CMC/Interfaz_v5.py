@@ -14,6 +14,8 @@ import serial        # pip install pyserial
 import time
 import winsound
 from PIL import Image, ImageTk
+import csv, os
+from datetime import datetime
 
 # ─── EEG ──────────────────────────────────────────────────────────────────────
 import numpy as np
@@ -21,6 +23,7 @@ from scipy.signal import butter, filtfilt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 from eeg_uhb import EEGAcquisitionManager
+from pylsl import local_clock
 
 EEG_STREAM_NAME = 'streamTEST'   # debe ser el mismo que en unicorn lsl
 EEG_SAVE_PATH   = r'C:\Users\ikerf\Desktop\Upiita\TT' #r'C:\Users\lipsp\Documents\Entrenamiento imaginacion'
@@ -29,17 +32,44 @@ EEG_CANALES     = {'Fz': 0, 'FC3': 1, 'FCz': 2, 'FC4': 3,
 EEG_VENTANA     = 250   # muestras visibles (1 segundo a 250 Hz)
 EEG_REFRESCO    = 50    # ms entre actualizaciones de la gráfica
 
+# class EEGConGrafica(EEGAcquisitionManager):
+#     """Subclase que agrega timeout al pull_sample y una cola exclusiva para graficar."""
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.grafica_queue = queue.Queue()
+
+#     def _acquisition_loop(self):
+#         try:
+#             while self.running:
+#                 sample, timestamp = self.stream_inlet.pull_sample(timeout=0.1)
+#                 if sample:
+#                     self.data.append(sample)
+#                     self.timestamps.append(timestamp)
+#                     self.data_queue.put((sample, timestamp))
+#                     self.process_queue.put((sample, timestamp))
+#                     self.grafica_queue.put(sample)
+#         except Exception as e:
+#             import logging
+#             logging.error(f"Acquisition error: {str(e)}")
+
 class EEGConGrafica(EEGAcquisitionManager):
-    """Subclase que agrega timeout al pull_sample y una cola exclusiva para graficar."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.grafica_queue = queue.Queue()
+        self.grafica_queue  = queue.Queue()
+        self._lsl_offset    = 0
+        self._first_timestamp = None
 
     def _acquisition_loop(self):
         try:
+            from pylsl import local_clock
+            self._lsl_offset    = local_clock() - time.time()
+            self._first_timestamp = None
+
             while self.running:
                 sample, timestamp = self.stream_inlet.pull_sample(timeout=0.1)
                 if sample:
+                    if self._first_timestamp is None:
+                        self._first_timestamp = timestamp
                     self.data.append(sample)
                     self.timestamps.append(timestamp)
                     self.data_queue.put((sample, timestamp))
@@ -48,6 +78,26 @@ class EEGConGrafica(EEGAcquisitionManager):
         except Exception as e:
             import logging
             logging.error(f"Acquisition error: {str(e)}")
+
+    def _storage_loop(self):
+        from datetime import datetime
+        while self.running or not self.data_queue.empty():
+            try:
+                sample, timestamp = self.data_queue.get(timeout=1)
+                if hasattr(self, 'csv_writer'):
+                    try:
+                        # Hora local legible
+                        unix_time   = timestamp - self._lsl_offset
+                        hora_local  = datetime.fromtimestamp(unix_time).strftime('%H:%M:%S.%f')
+                        self.csv_writer.writerow([hora_local] + sample)
+                        self.sample_count += 1
+                    except Exception as e:
+                        import logging
+                        logging.error(f"Error writing data: {str(e)}")
+                self.data_queue.task_done()
+            except queue.Empty:
+                pass
+
 
 def _filtrar_eeg(y, lowcut=1, highcut=40, fs=250, order=4):
     nyq = fs * 0.5
@@ -227,6 +277,9 @@ class CoherenciaBCI(tk.Tk):
         self.bind("<F11>",    lambda e: self.attributes("-fullscreen", True))
         self.orden_sesion = []   # se llena al generar
         self.indice_actual = 0   # apunta a la condición en curso
+        self.serial_csv_writer = None
+        self.serial_data_file  = None
+        self.serial_save_path  = None
 
         # Fuerza máxima registrada en calibración (Newtons)
         self.max_force = tk.DoubleVar(value=0.0)
@@ -416,6 +469,22 @@ class CoherenciaBCI(tk.Tk):
     def show_frame(self, name):
         self.frames[name].tkraise()
         self.frames[name].on_enter()
+
+    def iniciar_guardado_serial(self, condicion, pid):
+        fecha    = datetime.now().strftime("%d%m%y")
+        indice   = self.indice_actual
+        nombre   = f"S{pid}_DINAM_{fecha}_{condicion}_{indice}.csv"
+        os.makedirs(self.serial_save_path, exist_ok=True)
+        filepath = os.path.join(self.serial_save_path, nombre)
+        self.serial_data_file  = open(filepath, 'w', newline='')
+        self.serial_csv_writer = csv.writer(self.serial_data_file)
+        self.serial_csv_writer.writerow(['Timestamp', 'Fuerza_N'])  # headers
+
+    def detener_guardado_serial(self):
+        if self.serial_data_file:
+            self.serial_data_file.close()
+            self.serial_data_file  = None
+            self.serial_csv_writer = None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -853,6 +922,8 @@ class CalibracionPage(tk.Frame):
         
         ctrl.indice_actual += 1
         ctrl.show_frame(mapa[siguiente_cond])
+
+    
         
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -947,6 +1018,10 @@ class RegistroPage(tk.Frame):
         self._history    = []
         self.start_btn.config(text="Detener")
         self.instr.config(text="¡Mantén la fuerza en la zona verde!")
+        cfg = self.controller.frames.get("ConfiguracionPage")
+        pid = cfg.participanteID.get().strip()
+        self.controller.serial_save_path = EEG_SAVE_PATH  # misma carpeta que EEG
+        self.controller.iniciar_guardado_serial(condicion="ME", pid=pid)
         # Vaciar cola por si quedaron datos de una sesión anterior
         while not self.controller.serial_queue.empty():
             self.controller.serial_queue.get_nowait()
@@ -961,6 +1036,7 @@ class RegistroPage(tk.Frame):
         self.instr.config(
             text=f"Presiona INICIAR y mantén tu fuerza en la zona verde durante {REGISTRO_DURATION} segundos.")
         self.controller.cerrar_ventana_eeg(condicion="ME")
+        self.controller.detener_guardado_serial()
 
     def _tick(self):
         if not self._running:
@@ -976,6 +1052,13 @@ class RegistroPage(tk.Frame):
                 print(f"[COLA] dato leído: {force_n:.1f} | restantes en cola: {self.controller.serial_queue.qsize()}")
             except queue.Empty:
                 break
+
+        if force_n is not None:
+            # Guardar en CSV
+            if self.controller.serial_csv_writer:
+                from datetime import datetime
+                hora = datetime.now().strftime('%H:%M:%S.%f')
+                self.controller.serial_csv_writer.writerow([hora, force_n])
 
         if force_n is None:
             # No llegó ningún dato nuevo en este tick
@@ -1006,6 +1089,7 @@ class RegistroPage(tk.Frame):
         self.instr.config(text=f"Presiona INICIAR y mantén tu fuerza en la zona verde durante {REGISTRO_DURATION} segundos.")
         self._draw_timer(full=True)
         self.controller.cerrar_ventana_eeg()
+        self.controller.detener_guardado_serial()
 
     def _reset(self):
         self._elapsed_ms = 0
