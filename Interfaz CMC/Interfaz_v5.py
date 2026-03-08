@@ -26,7 +26,7 @@ from eeg_uhb import EEGAcquisitionManager
 from pylsl import local_clock
 
 EEG_STREAM_NAME = 'streamTEST'   # debe ser el mismo que en unicorn lsl
-EEG_SAVE_PATH   = r'C:\Users\ikerf\Desktop\Upiita\TT\RegistrosCMC' #r'C:\Users\lipsp\Documents\Entrenamiento imaginacion'
+EEG_SAVE_PATH   = r'RegistrosCMC' #r'C:\Users\lipsp\Documents\Entrenamiento imaginacion'
 EEG_CANALES     = {'Fz': 0, 'FC3': 1, 'FCz': 2, 'FC4': 3,
                    'Cz': 4, 'C3': 5, 'NC': 6, 'C4': 7} # NC-not connected
 EEG_VENTANA     = 250   # muestras visibles (1 segundo a 250 Hz)
@@ -109,6 +109,7 @@ SERIAL_PORT = 'COM7'
 SERIAL_BAUD = 115200
 CMD_START   = b'S\n'   # letra que Arduino espera para comenzar a enviar
 CMD_STOP    = b'P\n'   # letra que Arduino espera para dejar de enviar
+CMD_CALIBRATE    = b'Z\n'   # letra que Arduino espera para comenzar la calibración
 
 try:
     ser = serial.Serial(SERIAL_PORT, SERIAL_BAUD, timeout=1)
@@ -224,7 +225,7 @@ def draw_graph(canvas, history,
     #canvas.create_polygon([c for p in poly for c in p],
     #                      fill=GREEN_LIGHT, outline="", smooth=True)
     canvas.create_line([c for p in pts for c in p],
-                       fill=GREEN_MAIN, width=3, smooth=True)
+                       fill=GREEN_MAIN, width=4, smooth=True)
 
     # Punto actual
     cx, cy = pts[-1]
@@ -347,7 +348,7 @@ class CoherenciaBCI(tk.Tk):
         win.geometry(f"{offset_x}x{alto}+{offset_x}+0")
         # Para pantalla completa en el secundario descomenta la línea siguiente:
         win.attributes("-fullscreen", True)
-        win.configure(bg=GRAY_TEXT)
+        win.configure(bg='#0d1117')
         # ---------------------------------------------------------------------
 
         self._eeg_window = win
@@ -355,24 +356,29 @@ class CoherenciaBCI(tk.Tk):
 
         fig, axes = plt.subplots(len(EEG_CANALES), 1,
                                  figsize=(10, 8), sharex=True)
-        fig.patch.set_facecolor('#282828')  # fondo exterior de la figura
+        fig.patch.set_facecolor('#0d1117')  # fondo exterior de la figura
         fig.tight_layout(pad=1.5)
         fig.subplots_adjust(left=0.08)
+        
         self._eeg_lines = {}
 
         for ax, (nombre, idx) in zip(axes, EEG_CANALES.items()):
             line, = ax.plot([], [], lw=0.9, color=COLORES_EEG[nombre])   
             ax.set_xlim(0, EEG_VENTANA)
-            ax.set_ylabel(nombre, rotation=0, labelpad=5, fontsize=9, 
-                  ha='right', va='center')
-            ax.yaxis.set_tick_params(labelsize=7)
-            ax.set_facecolor("#DEE0E0")
+            ax.set_ylabel(nombre, labelpad=5, fontsize=9, color=COLORES_EEG[nombre])
+            ax.set_facecolor('#0d1117')
+            ax.tick_params(colors='#8b949e', labelsize=7)
+            ax.spines[['top', 'right']].set_visible(False)
+            ax.spines['left'].set_color('#30363d')
+            ax.spines['bottom'].set_color('#30363d')
+            #ax.axvspan(0,250,alpha=0.10, color=COLORES_EEG[nombre], zorder=0)
             self._eeg_lines[nombre] = line
-            ax.tick_params(colors='white')
-            ax.yaxis.label.set_color('white')
-            axes[-1].xaxis.label.set_color('white')
 
-        axes[-1].set_xlabel("Muestras")
+        fig.suptitle('Señales EEG Crudas — FZ, FC3, FCZ, FC4, C3, --, C4',
+              color='#f0f6fc', fontsize=13, fontweight='bold', y=0.99)
+        plt.tight_layout(rect=[0, 0, 1, 0.98])   
+
+        axes[-1].set_xlabel("Muestras",color='#8b949e', fontsize=10)
 
         self._eeg_canvas = FigureCanvasTkAgg(fig, master=win)
         self._eeg_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
@@ -395,7 +401,7 @@ class CoherenciaBCI(tk.Tk):
                 pid    = self.participante_id
                 fecha  = datetime.now().strftime("%y%m%d")
                 indice = self.indice_actual + 1
-                nombre = f"S{pid}_EEG_{fecha}_{condicion}_{indice}.csv"
+                nombre = f"P{pid}_EEG_{fecha}_{condicion}_{indice}.csv"
 
                 carpeta = os.path.dirname(self.eeg.filepath)
                 nuevo   = os.path.join(carpeta, nombre)
@@ -413,38 +419,76 @@ class CoherenciaBCI(tk.Tk):
         self._eeg_buffer = []
         plt.close('all')
 
+    # def _actualizar_eeg(self):
+    #     """Loop de refresco de la gráfica EEG."""
+    #     if not self._eeg_window or not self._eeg_window.winfo_exists():
+    #         return
+
+    #     while not self.eeg.grafica_queue.empty():
+    #         try:
+    #             self._eeg_buffer.append(self.eeg.grafica_queue.get_nowait())
+    #         except Exception:
+    #             break
+
+    #     if self._eeg_buffer and self._eeg_canvas:
+    #         ultimos = self._eeg_buffer[-EEG_VENTANA:]
+    #         x = np.arange(len(ultimos))
+
+    #         for nombre, idx in EEG_CANALES.items():
+    #             y = np.array([m[idx] for m in ultimos])
+    #             # if len(y) >= 15:
+    #             #     try:
+    #             #         y = _filtrar_eeg(y)
+    #             #     except Exception:
+    #             #         pass
+    #             self._eeg_lines[nombre].set_data(x, y)
+    #             if len(y) > 0:
+    #                 p5, p95 = np.percentile(y, [5, 95])
+    #                 margin = (p95 - p5) * 0.2 or 1
+    #                 self._eeg_lines[nombre].axes.set_ylim(
+    #                     p5 - margin, p95 + margin)
+
+    #         self._eeg_canvas.draw()
+
+    #     self._eeg_window.after(EEG_REFRESCO, self._actualizar_eeg)
+
     def _actualizar_eeg(self):
-        """Loop de refresco de la gráfica EEG."""
-        if not self._eeg_window or not self._eeg_window.winfo_exists():
-            return
+        """Loop de refresco de la gráfica EEG en hilo separado."""
+        import threading
 
-        while not self.eeg.grafica_queue.empty():
-            try:
-                self._eeg_buffer.append(self.eeg.grafica_queue.get_nowait())
-            except Exception:
-                break
+        def loop():
+            while self._eeg_window and self._eeg_window.winfo_exists():
+                # Vaciar cola
+                while not self.eeg.grafica_queue.empty():
+                    try:
+                        self._eeg_buffer.append(self.eeg.grafica_queue.get_nowait())
+                    except Exception:
+                        break
 
-        if self._eeg_buffer and self._eeg_canvas:
-            ultimos = self._eeg_buffer[-EEG_VENTANA:]
-            x = np.arange(len(ultimos))
+                if self._eeg_buffer and self._eeg_canvas:
+                    ultimos = self._eeg_buffer[-EEG_VENTANA:]
+                    x = np.arange(len(ultimos))
 
-            for nombre, idx in EEG_CANALES.items():
-                y = np.array([m[idx] for m in ultimos])
-                # if len(y) >= 15:
-                #     try:
-                #         y = _filtrar_eeg(y)
-                #     except Exception:
-                #         pass
-                self._eeg_lines[nombre].set_data(x, y)
-                if len(y) > 0:
-                    p5, p95 = np.percentile(y, [5, 95])
-                    margin = (p95 - p5) * 0.2 or 1
-                    self._eeg_lines[nombre].axes.set_ylim(
-                        p5 - margin, p95 + margin)
+                    for nombre, idx in EEG_CANALES.items():
+                        y = np.array([m[idx] for m in ultimos])
+                        # if len(y) >= 15:
+                        #     try:
+                        #         y = _filtrar_eeg(y)
+                        #     except Exception:
+                        #         pass
+                        self._eeg_lines[nombre].set_data(x, y)
+                        if len(y) > 0:
+                            p5, p95 = np.percentile(y, [5, 95])
+                            margin = (p95 - p5) * 0.2 or 1
+                            self._eeg_lines[nombre].axes.set_ylim(
+                                p5 - margin, p95 + margin)
 
-            self._eeg_canvas.draw_idle()
+                    # draw_idle es thread-safe a diferencia de draw()
+                    self._eeg_canvas.draw_idle()
 
-        self._eeg_window.after(EEG_REFRESCO, self._actualizar_eeg)
+                time.sleep(EEG_REFRESCO / 1000)  # 50ms sin bloquear Tkinter
+
+        threading.Thread(target=loop, daemon=True).start()
 
     def play_sound(self, tipo="start"):
         sonidos = {
@@ -489,7 +533,7 @@ class CoherenciaBCI(tk.Tk):
     def iniciar_guardado_serial(self, condicion, pid):
         fecha    = datetime.now().strftime("%y%m%d")
         indice   = self.indice_actual + 1
-        nombre   = f"S{pid}_DINAM_{fecha}_{condicion}_{indice}.csv"
+        nombre   = f"P{pid}_DINAM_{fecha}_{condicion}_{indice}.csv"
         os.makedirs(self.serial_save_path, exist_ok=True)
         filepath = os.path.join(self.serial_save_path, nombre)
         self.serial_data_file  = open(filepath, 'w', newline='')
@@ -668,7 +712,7 @@ class ConfiguracionPage(tk.Frame):
         btn_frame = tk.Frame(card, bg=CARD_WHITE)
         btn_frame.pack(side="bottom", pady=20)
         colored_btn(btn_frame, "Iniciar", GREEN,
-                    command=self._iniciar_calibracion).pack()
+                    command=self.controller.serial_send(CMD_CALIBRATE)).pack()
         
         img_frame = tk.Frame(card, bg=CARD_WHITE)
         img_frame.pack(fill="both", expand=True, padx=20, pady=20)
@@ -686,14 +730,21 @@ class ConfiguracionPage(tk.Frame):
 
     def _generar_orden(self):
         condiciones = ["Reposo", "MI", "ME"]
+        condiciones2 = ["MI", "ME"]
         self.controller.indice_actual = 0
         random.shuffle(condiciones)          # 3 sin repetir
-        orden = condiciones + [random.choice(condiciones)]  # +1 que puede repetir
+        orden = condiciones + [random.choice(condiciones2)]  # +1 que puede repetir
         self.controller.orden_sesion = orden  #  guardar en controlador
-        
+        self.controller.participante_id = self.participanteID.get().strip()     
         for lbl, cond in zip(self.orden_labels, orden):
             lbl.config(text=cond)
-        
+        with open(f"registrosCMC/P{self.controller.participante_id}_{datetime.now().strftime('%Y-%m-%d')}.txt", "w") as archivo:
+            archivo.write(f"Participante {self.controller.participante_id}\n")
+            archivo.write(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            archivo.write("Orden de condiciones:\n")
+            for i, cond in enumerate(self.controller.orden_sesion, start=1):
+                archivo.write(f"{i}: {cond}\n")
+
 
     def _iniciar_calibracion(self):
         # TODO: navegar a CalibracionPage
