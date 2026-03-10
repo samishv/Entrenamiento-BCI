@@ -105,7 +105,7 @@ def _filtrar_eeg(y, lowcut=1, highcut=40, fs=250, order=4):
     return filtfilt(b, a, y)
 
 # ─── Conexión serial ──────────────────────────────────────────────────────────
-SERIAL_PORT = 'COM7'
+SERIAL_PORT = 'COM17'
 SERIAL_BAUD = 115200
 CMD_START   = b'S\n'   # letra que Arduino espera para comenzar a enviar
 CMD_STOP    = b'P\n'   # letra que Arduino espera para dejar de enviar
@@ -315,14 +315,14 @@ class CoherenciaBCI(tk.Tk):
         """Abre la ventana de visualización EEG en el monitor secundario."""
 
         COLORES_EEG = {
-                'Fz' : '#2BBCD4',  # teal
-                'FC3' : '#6DC14B',  # verde
-                'FCz' : '#F5A623',  # naranja
-                'FC4' : '#E05555',  # rojo
-                'Cz' : '#9B59B6',  # morado
-                'C3': '#3498DB',  # azul
-                'NC' : '#F39C12',  # amarillo
-                'C4': '#1ABC9C',  # verde agua
+                'Fz' : '#f94144',  # teal
+                'FC3' : '#f3722c',  # verde
+                'FCz' : '#f8961e',  # naranja
+                'FC4' : '#f9c74f',  # rojo
+                'Cz' : '#90be6d',  # morado
+                'C3': '#43aa8b',  # azul
+                'NC' : '#4d908e',  # amarillo
+                'C4': '#577590',  # verde agua
         }
         if self._eeg_window and self._eeg_window.winfo_exists():
             return
@@ -347,7 +347,7 @@ class CoherenciaBCI(tk.Tk):
         offset_x    = ancho_total // 2
         win.geometry(f"{offset_x}x{alto}+{offset_x}+0")
         # Para pantalla completa en el secundario descomenta la línea siguiente:
-        win.attributes("-fullscreen", True)
+        #win.attributes("-fullscreen", True)
         win.configure(bg='#0d1117')
         # ---------------------------------------------------------------------
 
@@ -418,39 +418,6 @@ class CoherenciaBCI(tk.Tk):
         self._eeg_lines  = {}
         self._eeg_buffer = []
         plt.close('all')
-
-    # def _actualizar_eeg(self):
-    #     """Loop de refresco de la gráfica EEG."""
-    #     if not self._eeg_window or not self._eeg_window.winfo_exists():
-    #         return
-
-    #     while not self.eeg.grafica_queue.empty():
-    #         try:
-    #             self._eeg_buffer.append(self.eeg.grafica_queue.get_nowait())
-    #         except Exception:
-    #             break
-
-    #     if self._eeg_buffer and self._eeg_canvas:
-    #         ultimos = self._eeg_buffer[-EEG_VENTANA:]
-    #         x = np.arange(len(ultimos))
-
-    #         for nombre, idx in EEG_CANALES.items():
-    #             y = np.array([m[idx] for m in ultimos])
-    #             # if len(y) >= 15:
-    #             #     try:
-    #             #         y = _filtrar_eeg(y)
-    #             #     except Exception:
-    #             #         pass
-    #             self._eeg_lines[nombre].set_data(x, y)
-    #             if len(y) > 0:
-    #                 p5, p95 = np.percentile(y, [5, 95])
-    #                 margin = (p95 - p5) * 0.2 or 1
-    #                 self._eeg_lines[nombre].axes.set_ylim(
-    #                     p5 - margin, p95 + margin)
-
-    #         self._eeg_canvas.draw()
-
-    #     self._eeg_window.after(EEG_REFRESCO, self._actualizar_eeg)
 
     def _actualizar_eeg(self):
         """Loop de refresco de la gráfica EEG en hilo separado."""
@@ -590,7 +557,7 @@ class MenuPage(tk.Frame):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class ConfiguracionPage(tk.Frame):
-    def __init__(self, parent, controller=None):
+    def __init__(self, parent, controller):
         super().__init__(parent, bg=CARD_WHITE)
         self.controller = controller
 
