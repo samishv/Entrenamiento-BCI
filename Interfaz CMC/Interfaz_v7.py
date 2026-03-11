@@ -13,7 +13,18 @@ import math
 import serial        # pip install pyserial
 import time
 import winsound
+import subprocess
+import sys
+import os
 from PIL import Image, ImageTk
+import csv, os
+from datetime import datetime
+
+# ─── EEG ──────────────────────────────────────────────────────────────────────
+EEG_STREAM_NAME = 'streamTEST'   # debe tener el mismo que en unicorn lsl
+EEG_SAVE_PATH   = 'registrosCMC'  # ruta donde eeg_window.py guardará los datos
+EEG_FLAG_PATH   = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               'eeg_grabar.flag')
 
 # ─── Conexión serial ──────────────────────────────────────────────────────────
 SERIAL_PORT = 'COM7'
@@ -67,7 +78,7 @@ F_ORDER_N  = ("Helvetica", 20, "bold")
 F_ORDER_T  = ("Helvetica", 13)
 
 CALIB_DURATION   = 10   # segundos de calibración
-REGISTRO_DURATION = 30  # segundos de registro
+REGISTRO_DURATION = 32  # segundos de registro
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -140,7 +151,7 @@ def draw_graph(canvas, history,
     # Punto actual
     cx, cy = pts[-1]
     canvas.create_oval(cx - 8, cy - 8, cx + 8, cy + 8,
-                       fill=GREEN_MAIN, outline=CARD_WHITE, width=3)
+                       fill=GREEN_MAIN, outline=CARD_WHITE, width=5)
 
 
 def draw_timer_bar(canvas, timer_lbl, elapsed_ms, total_ms, label_fmt="{s} / {t} s"):
@@ -162,7 +173,7 @@ def draw_timer_bar(canvas, timer_lbl, elapsed_ms, total_ms, label_fmt="{s} / {t}
 def make_card(parent, border_color, width=100, height=380):
     """Frame con borde de color simulado usando un Frame exterior."""
     outer = tk.Frame(parent, bg=border_color, padx=3, pady=3)
-    inner = tk.Frame(outer, bg=CARD_WHITE, width=width, height=height)
+    inner = tk.Frame(outer, bg=CARD_WHITE)
     inner.pack(fill="both", expand=True)
     inner.pack_propagate(False)
     return outer, inner
@@ -188,6 +199,9 @@ class CoherenciaBCI(tk.Tk):
         self.bind("<F11>",    lambda e: self.attributes("-fullscreen", True))
         self.orden_sesion = []   # se llena al generar
         self.indice_actual = 0   # apunta a la condición en curso
+        self.serial_csv_writer = None
+        self.serial_data_file  = None
+        self.serial_save_path  = None
 
         # Fuerza máxima registrada en calibración (Newtons)
         self.max_force = tk.DoubleVar(value=0.0)
@@ -211,6 +225,63 @@ class CoherenciaBCI(tk.Tk):
             frame.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         self.show_frame("MenuPage")
+
+        # ─── EEG ──────────────────────────────────────────────────────────────
+        self._eeg_proceso  = None  # subproceso de la ventana EEG
+        self.participante_id = "X"  # se actualiza al salir de ConfiguracionPage
+
+    def abrir_ventana_eeg(self, condicion="EEG", save_path=None):
+        """Lanza la ventana EEG como subproceso (solo visualiza, sin guardar)."""
+        
+        if self._eeg_proceso:
+            print(f"[EEG] poll={self._eeg_proceso.poll()}")
+        if self._eeg_proceso and self._eeg_proceso.poll() is None:
+            return
+        print("[EEG] Lanzando nuevo proceso...")    
+
+
+        if self._eeg_proceso and self._eeg_proceso.poll() is None:
+            return
+
+        path = save_path or EEG_SAVE_PATH
+        pid  = self.participante_id
+        idx  = str(self.indice_actual)
+
+        script = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              'eeg_window.py')
+
+        self._eeg_proceso = subprocess.Popen(
+            [sys.executable, script,
+            EEG_STREAM_NAME, path, condicion, pid, idx]
+            # sin creationflags — hereda la consola de la interfaz principal
+        )
+
+    def iniciar_grabacion_eeg(self, condicion="EEG"):
+        """Crea el flag con la condición → eeg_window.py empieza a guardar."""
+        try:
+            with open(EEG_FLAG_PATH, 'w') as f:
+                f.write(f"{condicion},{self.participante_id},{self.indice_actual}")
+            import datetime
+            print(f"[FLAG] Creado: {condicion} — {datetime.datetime.now().strftime('%H:%M:%S.%f')}")
+        except Exception as e:
+            print(f"[EEG] Error creando flag: {e}")
+
+    def detener_grabacion_eeg(self):
+        """Borra el flag → eeg_window.py para de guardar."""
+        try:
+            if os.path.exists(EEG_FLAG_PATH):
+                os.remove(EEG_FLAG_PATH)
+                import datetime
+                print(f"[FLAG] Borrado — {datetime.datetime.now().strftime('%H:%M:%S.%f')}")
+        except Exception as e:
+            print(f"[EEG] Error borrando flag: {e}")
+
+    def cerrar_ventana_eeg(self):
+        """Borra el flag y termina el subproceso."""
+        self.detener_grabacion_eeg()
+        if self._eeg_proceso and self._eeg_proceso.poll() is None:
+            self._eeg_proceso.terminate()
+            self._eeg_proceso = None
 
     def play_sound(self, tipo="start"):
         sonidos = {
@@ -248,6 +319,22 @@ class CoherenciaBCI(tk.Tk):
             ser.write(cmd)
             print(f"[SERIAL] enviado: {repr(cmd)}")
 
+    def iniciar_guardado_serial(self, condicion, pid):
+        fecha    = datetime.now().strftime("%d%m%y")
+        indice   = self.indice_actual
+        nombre   = f"S{pid}_DINAM_{fecha}_{condicion}_{indice}.csv"
+        os.makedirs(self.serial_save_path, exist_ok=True)
+        filepath = os.path.join(self.serial_save_path, nombre)
+        self.serial_data_file  = open(filepath, 'w', newline='')
+        self.serial_csv_writer = csv.writer(self.serial_data_file)
+        self.serial_csv_writer.writerow(['Timestamp', 'Fuerza_N'])
+
+    def detener_guardado_serial(self):
+        if self.serial_data_file:
+            self.serial_data_file.close()
+            self.serial_data_file  = None
+            self.serial_csv_writer = None
+
     def show_frame(self, name):
         self.frames[name].tkraise()
         self.frames[name].on_enter()
@@ -257,7 +344,7 @@ class CoherenciaBCI(tk.Tk):
 class MenuPage(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg=BG_MENU)
-        self.controller = controller
+        controller = controller
 
         card = tk.Frame(self, bg=CARD_WHITE)
         card.place(relx=0.5, rely=0.5, anchor="center", width=840, height=480)
@@ -324,7 +411,7 @@ class ConfiguracionPage(tk.Frame):
         tk.Label(id_frame, text="ID de participante:", font=F_LABEL,
                  fg=TEXT_MUTED, bg=CARD_WHITE).pack(side="left", padx=(0, 8))
         self.participanteID = tk.Entry(
-            id_frame, font=F_LABEL, fg=NAVY, bg=CARD_WHITE,
+            id_frame, font=F_LABEL, fg=NAVY, bg=BG_LIGHT,
             relief="flat", width=12, bd=4
         )
         self.participanteID.pack(side="left", ipady=4)
@@ -337,6 +424,7 @@ class ConfiguracionPage(tk.Frame):
         # Columnas equidistantes
         for col in range(3):
             cards_row.columnconfigure(col, weight=1, uniform="col")
+        cards_row.rowconfigure(1, weight=1)
 
         self._build_serial_card(cards_row)
         self._build_orden_card(cards_row)
@@ -350,28 +438,30 @@ class ConfiguracionPage(tk.Frame):
         outer, card = make_card(parent, TEAL, height=660)
         outer.grid(row=1, column=0, padx=15, sticky="nsew")
 
-        # Puerto
-        port_row = tk.Frame(card, bg=CARD_WHITE)
-        port_row.pack(fill="both", expand=True, padx=20, pady=20)
-        tk.Label(port_row, text="Puerto:", font=F_LABEL,
-                 fg=DARK_TEXT, bg=CARD_WHITE).pack(pady=(100, 20))
-        self.puerto = tk.Entry(port_row, font=F_LABEL, fg=DARK_TEXT,
-                               bg="#DDE3EE", relief="flat", width=10, bd=4)
-        self.puerto.pack()
-        self.puerto.insert(0, "COM3")
-
-        # Status
-        tk.Label(port_row, text="Conexión Status", font=F_LABEL,
-                 fg=DARK_TEXT, bg=CARD_WHITE).pack(pady=(100, 8))
-        self.status_dot = tk.Label(port_row, text="△", font=("Helvetica", 32),
-                                   fg=RED_DOT, bg=CARD_WHITE)
-        self.status_dot.pack(pady=(0,80))
-
         # Botón
         btn_frame = tk.Frame(card, bg=CARD_WHITE)
         btn_frame.pack(side="bottom", pady=30)
         colored_btn(btn_frame, "Conectar", TEAL,
                     command=self._conectar).pack()
+        
+        # Puerto
+        port_row = tk.Frame(card, bg=CARD_WHITE)
+        port_row.pack(fill="both", expand=True, padx=20, pady=20)
+        tk.Label(port_row, text="Puerto:", font=F_LABEL,
+                 fg=DARK_TEXT, bg=CARD_WHITE).pack(pady=(80, 20))
+        self.puerto = tk.Entry(port_row, font=F_LABEL, fg=DARK_TEXT,
+                               bg="#DDE3EE", relief="flat", width=10, bd=4)
+        self.puerto.pack()
+        self.puerto.insert(0, "COM7")
+
+        # Status
+        tk.Label(port_row, text="Conexión Status", font=F_LABEL,
+                 fg=DARK_TEXT, bg=CARD_WHITE).pack(pady=(50, 8))
+        self.status_dot = tk.Label(port_row, text="△", font=("Helvetica", 32),
+                                   fg=RED_DOT, bg=CARD_WHITE)
+        self.status_dot.pack(pady=(0,80))
+
+
 
     # ── Tarjeta 2: Generar orden de sesión ───────────────────────
     def _build_orden_card(self, parent):
@@ -380,6 +470,12 @@ class ConfiguracionPage(tk.Frame):
 
         outer, card = make_card(parent, ORANGE, height=360)
         outer.grid(row=1, column=1, padx=15, sticky="nsew")
+
+        # Botón
+        btn_frame = tk.Frame(card, bg=CARD_WHITE)
+        btn_frame.pack(side="bottom", pady=20)
+        colored_btn(btn_frame, "Generar", ORANGE,
+                    command=self._generar_orden).pack()
 
         # Lista de condiciones (se actualiza al generar)
         self.orden_labels = []
@@ -397,11 +493,7 @@ class ConfiguracionPage(tk.Frame):
             lbl.pack(padx=(50,200))
             self.orden_labels.append(lbl)
 
-        # Botón
-        btn_frame = tk.Frame(card, bg=CARD_WHITE)
-        btn_frame.pack(side="bottom", pady=20)
-        colored_btn(btn_frame, "Generar", ORANGE,
-                    command=self._generar_orden).pack()
+        
 
     # ── Tarjeta 3: Calibración ────────────────────────────────────
     def _build_calibracion_card(self, parent):
@@ -410,6 +502,12 @@ class ConfiguracionPage(tk.Frame):
 
         outer, card = make_card(parent, GREEN_MAIN, height=360)
         outer.grid(row=1, column=2, padx=15, sticky="nsew")
+
+        # Botón
+        btn_frame = tk.Frame(card, bg=CARD_WHITE)
+        btn_frame.pack(side="bottom", pady=20)
+        colored_btn(btn_frame, "Iniciar", GREEN,
+                    command=self._iniciar_calibracion).pack()
         
         img_frame = tk.Frame(card, bg=CARD_WHITE)
         img_frame.pack(fill="both", expand=True, padx=20, pady=20)
@@ -420,12 +518,6 @@ class ConfiguracionPage(tk.Frame):
         lbl.pack(expand=True, pady=(30, 10))
         lbl.img_ref = img_tk
 
-        # Botón
-        btn_frame = tk.Frame(card, bg=CARD_WHITE)
-        btn_frame.pack(side="bottom", pady=20)
-        colored_btn(btn_frame, "Iniciar", GREEN,
-                    command=self._iniciar_calibracion).pack()
-
     # ── Callbacks (conectar con lógica real) ─────────────────────
     def _conectar(self):
         # TODO: lógica de conexión serial
@@ -433,13 +525,22 @@ class ConfiguracionPage(tk.Frame):
 
     def _generar_orden(self):
         condiciones = ["Reposo", "MI", "ME"]
-        
+        condiciones2 = ["MI", "ME"]
+        self.controller.indice_actual = 0
         random.shuffle(condiciones)          # 3 sin repetir
-        orden = condiciones + [random.choice(condiciones)]  # +1 que puede repetir
+        orden = condiciones + [random.choice(condiciones2)]  # +1 que puede repetir
         self.controller.orden_sesion = orden  #  guardar en controlador
-        
+        self.controller.participante_id = self.participanteID.get().strip() or "X"  # actualizar ID
         for lbl, cond in zip(self.orden_labels, orden):
             lbl.config(text=cond)
+        with open(f"registrosCMC/P{self.controller.participante_id}_{datetime.now().strftime('%Y-%m-%d')}.txt", "w") as archivo:
+            archivo.write(f"Participante {self.controller.participante_id}\n")
+            archivo.write(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            archivo.write("Orden de condiciones:\n")
+            for i, cond in enumerate(self.controller.orden_sesion, start=1):
+                archivo.write(f"{i}: {cond}\n")
+        # Prepara ventana EEG
+        self.controller.abrir_ventana_eeg()
         
 
     def _iniciar_calibracion(self):
@@ -447,13 +548,7 @@ class ConfiguracionPage(tk.Frame):
         if self.controller:
             self.controller.show_frame("CalibracionPage")
 
-    def get_filename(self):
-        from datetime import datetime
-        pid    = self.participanteID.get().strip()
-        sesion = getattr(self, '_sesion', '1')
-        fecha  = datetime.now().strftime("%d%m%y")
-        return f"S{pid}_RegistroCMC_ME_{fecha}_{sesion}"
-    
+   
     def on_enter(self):
         pass
     
@@ -546,6 +641,8 @@ class CalibracionPage(tk.Frame):
         if self._running:
             self._stop()
         self._reset()
+        self.controller.bind_all('<plus>',  lambda e: self._toggle())
+        self.controller.bind_all('<minus>', lambda e: self._siguiente())
 
     def _go_menu(self):
         if self._running:
@@ -596,14 +693,14 @@ class CalibracionPage(tk.Frame):
         while not self.controller.serial_queue.empty():
             try:
                 force_n = self.controller.serial_queue.get_nowait()
-                print(f"[COLA] dato leído: {force_n:.1f} | restantes en cola: {self.controller.serial_queue.qsize()}")
+                #print(f"[COLA] dato leído: {force_n:.1f} | restantes en cola: {self.controller.serial_queue.qsize()}")
             except queue.Empty:
                 break
 
         if force_n is None:
             # No llegó ningún dato nuevo en este tick
             force_n = self._history[-1] if self._history else 0.
-            print(f"[COLA] vacía — usando último valor: {force_n:.1f}")
+            #print(f"[COLA] vacía — usando último valor: {force_n:.1f}")
         
         self._peak_n = max(self._peak_n, force_n)
         self._history.append(force_n)
@@ -667,31 +764,27 @@ class CalibracionPage(tk.Frame):
         
     def _siguiente(self):
         ctrl = self.controller
-        
-    
+        self.controller.unbind_all('<plus>')
+        self.controller.unbind_all('<minus>')
         if ctrl.indice_actual >= len(ctrl.orden_sesion):
             ctrl.show_frame("MenuPage")
             return
-    
         siguiente_cond = ctrl.orden_sesion[ctrl.indice_actual]
-    
-        # Mapeo condición a frame
         mapa = {
             "Reposo" : "REPage",
             "MI"     : "MIPage",
             "ME"     : "RegistroPage",
         }
-        
         ctrl.indice_actual += 1
         ctrl.show_frame(mapa[siguiente_cond])
-        
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 class RegistroPage(tk.Frame):
     """
-    Ensayo de 30 segundos.
+    Ensayo de 32 segundos.
     Muestra la fuerza en % del máximo calibrado.
-    Zona objetivo: 20–40 %.
+    Zona objetivo: 25–35 %.
     """
     def __init__(self, parent, controller):
         super().__init__(parent, bg=BG_LIGHT)
@@ -703,7 +796,7 @@ class RegistroPage(tk.Frame):
         # Header
         hdr = tk.Frame(self, bg=BG_LIGHT)
         hdr.pack(fill="x", padx=70, pady=(50, 0))
-        tk.Label(hdr, text="Registro", font=F_HEAD, fg=NAVY,
+        tk.Label(hdr, text="M E", font=F_HEAD, fg=NAVY,
                  bg=BG_LIGHT).pack(side="left")
         tk.Button(hdr, text="← Menú", command=self._go_menu,
                   bg=BG_LIGHT, fg=TEXT_MUTED, font=F_LABEL,
@@ -760,14 +853,11 @@ class RegistroPage(tk.Frame):
     def on_enter(self):
         if self._running:
             self._stop()
-        # max_n = self.controller.max_force.get()
-        # if max_n > 0:
-        #     self.max_lbl.config(text=f"Máx. calibrado: {max_n:.0f} N")
-        #     self.warn_lbl.config(text="")
-        # else:
-        #     self.max_lbl.config(text="Máx. calibrado: -- N")
-        #     self.warn_lbl.config(text="⚠  Sin calibración — referencia: 200 N")
         self._reset()
+        self.controller.bind_all('<plus>',  lambda e: self._toggle())
+        self.controller.bind_all('<minus>', lambda e: self._siguiente())
+        self.instr.config(
+            text=f"Presiona INICIAR y mantén tu fuerza en la zona verde durante {REGISTRO_DURATION} segundos.")
 
     def _go_menu(self):
         if self._running:
@@ -789,10 +879,14 @@ class RegistroPage(tk.Frame):
         self._history    = []
         self.start_btn.config(text="Detener")
         self.instr.config(text="¡Mantén la fuerza en la zona verde!")
+        pid = self.controller.participante_id
+        self.controller.serial_save_path = EEG_SAVE_PATH
+        self.controller.iniciar_guardado_serial(condicion="ME", pid=pid)
         # Vaciar cola por si quedaron datos de una sesión anterior
         while not self.controller.serial_queue.empty():
             self.controller.serial_queue.get_nowait()
         self.controller.serial_send(CMD_START)   # ► Arduino: empieza a enviar
+        self.controller.iniciar_grabacion_eeg(condicion="ME")
         self._tick()
 
     def _stop(self):
@@ -801,6 +895,8 @@ class RegistroPage(tk.Frame):
         self.start_btn.config(text="Iniciar")
         self.instr.config(
             text=f"Presiona INICIAR y mantén tu fuerza en la zona verde durante {REGISTRO_DURATION} segundos.")
+        self.controller.detener_grabacion_eeg()
+        self.controller.detener_guardado_serial()
 
     def _tick(self):
         if not self._running:
@@ -817,12 +913,16 @@ class RegistroPage(tk.Frame):
             except queue.Empty:
                 break
 
+        if force_n is not None:
+            if self.controller.serial_csv_writer:
+                hora = datetime.now().strftime('%H:%M:%S.%f')
+                self.controller.serial_csv_writer.writerow([hora, force_n])
+
         if force_n is None:
             # No llegó ningún dato nuevo en este tick
             last_pct = self._history[-1] if self._history else ref * 0.30 / ref * 100
             force_n  = last_pct / 100 * ref
             print(f"[COLA] vacía — usando último valor: {force_n:.1f}")
-
 
         pct = min(force_n / ref * 100, 100)
         self._history.append(pct)
@@ -841,10 +941,12 @@ class RegistroPage(tk.Frame):
     def _finish(self):
         self._running = False
         self.controller.serial_send(CMD_STOP)    # ► Arduino: para de enviar
-        self.controller.play_sound("stop")
+        self.controller.play_sound("finish")
         self.start_btn.config(text="Iniciar de nuevo")
         self.instr.config(text="Ensayo completado.")
         self._draw_timer(full=True)
+        self.controller.detener_grabacion_eeg()
+        self.controller.detener_guardado_serial()
 
     def _reset(self):
         self._elapsed_ms = 0
@@ -863,12 +965,12 @@ class RegistroPage(tk.Frame):
         draw_graph(self.graph, self._history,
                y_max=100,
                y_ticks=[0, 20, 40, 60, 80, 100],
-               zone_lo=20, zone_hi=40, show_zone=True)
+               zone_lo=25, zone_hi=35, show_zone=True)
     
         # Dibujar el valor encima de la gráfica, esquina superior izquierda
         pct = self._history[-1] if self._history else None
         if pct is not None:
-            color = GREEN_MAIN if 20 <= pct <= 40 else WARN_RED
+            color = GREEN_MAIN if 25 <= pct <= 35 else WARN_RED
             self.graph.create_text(80, 30,
                                    text=f"{pct:.0f}",
                                    font=F_NUM, fill=color, anchor="nw")
@@ -878,25 +980,21 @@ class RegistroPage(tk.Frame):
     
     def _siguiente(self):
         ctrl = self.controller
-        
-    
+        self.controller.unbind_all('<plus>')
+        self.controller.unbind_all('<minus>')
         if ctrl.indice_actual >= len(ctrl.orden_sesion):
             ctrl.show_frame("MenuPage")
             return
-    
         siguiente_cond = ctrl.orden_sesion[ctrl.indice_actual]
-    
-        # Mapeo condición a frame
         mapa = {
             "Reposo" : "REPage",
             "MI"     : "MIPage",
             "ME"     : "RegistroPage",
         }
-        
         ctrl.indice_actual += 1
         ctrl.show_frame(mapa[siguiente_cond])
-            
-        
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 class MIPage(tk.Frame):
     """
@@ -948,6 +1046,10 @@ class MIPage(tk.Frame):
         if self._running:
             self._stop()
         self._reset()
+        self.controller.bind_all('<plus>',  lambda e: self._toggle())
+        self.controller.bind_all('<minus>', lambda e: self._siguiente())
+        self.instr.config(
+            text=f"Presiona INICIAR e imagina el movimiento durante {REGISTRO_DURATION} segundos.")
 
     def _go_menu(self):
         if self._running:
@@ -971,12 +1073,14 @@ class MIPage(tk.Frame):
         self.result_lbl.config(text="")
         self.start_btn.config(text="Detener")
         self._tick()
+        self.controller.iniciar_grabacion_eeg(condicion="MI")
         
     def _stop(self):
         self._running = False
         self.start_btn.config(text="Iniciar")
         self.instr.config(
-            text=f"Presiona INICIAR e imagina el movimiento durante {REGISTRO_DURATION} segundos.")
+            text=f"Presiona INICIAR e IMAGINA el movimiento durante {REGISTRO_DURATION} segundos.")
+        self.controller.detener_grabacion_eeg()
 
     def _tick(self):
         if not self._running:
@@ -995,32 +1099,24 @@ class MIPage(tk.Frame):
         self.controller.play_sound("finish")
         self.start_btn.config(text="Iniciar de nuevo")
         self.instr.config(text="Ensayo completado.")
-        
+        self.controller.detener_grabacion_eeg()
 
     def _reset(self):
         self._elapsed_ms = 0
         self.start_btn.config(text="Iniciar")
-        
+
     def _siguiente(self):
         ctrl = self.controller
-        
-    
+        self.controller.unbind_all('<plus>')
+        self.controller.unbind_all('<minus>')
         if ctrl.indice_actual >= len(ctrl.orden_sesion):
             ctrl.show_frame("MenuPage")
             return
-    
         siguiente_cond = ctrl.orden_sesion[ctrl.indice_actual]
-    
-        # Mapeo condición a frame
-        mapa = {
-            "Reposo" : "REPage",
-            "MI"     : "MIPage",
-            "ME"     : "RegistroPage",
-        }
-        
+        mapa = {"Reposo": "REPage", "MI": "MIPage", "ME": "RegistroPage"}
         ctrl.indice_actual += 1
         ctrl.show_frame(mapa[siguiente_cond])
-        
+
 # ══════════════════════════════════════════════════════════════════════════════
 class REPage(tk.Frame):
     """
@@ -1072,6 +1168,10 @@ class REPage(tk.Frame):
         if self._running:
             self._stop()
         self._reset()
+        self.controller.bind_all('<plus>',  lambda e: self._toggle())
+        self.controller.bind_all('<minus>', lambda e: self._siguiente())
+        self.instr.config(
+            text=f"Presiona INICIAR y mantente en REPOSO durante {REGISTRO_DURATION} segundos.")
 
     def _go_menu(self):
         if self._running:
@@ -1095,12 +1195,14 @@ class REPage(tk.Frame):
         self.result_lbl.config(text="")
         self.start_btn.config(text="Detener")
         self._tick()
+        self.controller.iniciar_grabacion_eeg(condicion="Reposo")
         
     def _stop(self):
         self._running = False
         self.start_btn.config(text="Iniciar")
         self.instr.config(
-            text=f"Presiona INICIAR e imagina el movimiento durante {REGISTRO_DURATION} segundos.")
+            text=f"Presiona INICIAR y mantente en REPOSO durante {REGISTRO_DURATION} segundos.")
+        self.controller.detener_grabacion_eeg()
 
     def _tick(self):
         if not self._running:
@@ -1119,7 +1221,7 @@ class REPage(tk.Frame):
         self.controller.play_sound("finish")
         self.start_btn.config(text="Iniciar de nuevo")
         self.instr.config(text="Ensayo completado.")
-        
+        self.controller.detener_grabacion_eeg()
 
     def _reset(self):
         self._elapsed_ms = 0
@@ -1127,21 +1229,13 @@ class REPage(tk.Frame):
         
     def _siguiente(self):
         ctrl = self.controller
-        
-    
+        self.controller.unbind_all('<plus>')
+        self.controller.unbind_all('<minus>')
         if ctrl.indice_actual >= len(ctrl.orden_sesion):
             ctrl.show_frame("MenuPage")
             return
-    
         siguiente_cond = ctrl.orden_sesion[ctrl.indice_actual]
-    
-        # Mapeo condición a frame
-        mapa = {
-            "Reposo" : "REPage",
-            "MI"     : "MIPage",
-            "ME"     : "RegistroPage",
-        }
-        
+        mapa = {"Reposo": "REPage", "MI": "MIPage", "ME": "RegistroPage"}
         ctrl.indice_actual += 1
         ctrl.show_frame(mapa[siguiente_cond])
 
