@@ -5,6 +5,7 @@ Created on Fri Feb 20 01:32:15 2026
 @author: ikerf
 """
 
+from email.mime import base
 import tkinter as tk
 import random
 import threading
@@ -19,6 +20,7 @@ import os
 from PIL import Image, ImageTk
 import csv, os
 from datetime import datetime
+from pathlib import Path
 
 # ─── EEG ──────────────────────────────────────────────────────────────────────
 EEG_STREAM_NAME = 'streamTEST'   # debe tener el mismo que en unicorn lsl
@@ -31,6 +33,7 @@ SERIAL_PORT = 'COM7'
 SERIAL_BAUD = 115200
 CMD_START   = b'S\n'   # letra que Arduino espera para comenzar a enviar
 CMD_STOP    = b'P\n'   # letra que Arduino espera para dejar de enviar
+CMD_CALIBRATE = b'Z\n'  # letra que Arduino espera para iniciar calibración
 
 try:
     ser = serial.Serial(SERIAL_PORT, SERIAL_BAUD, timeout=1)
@@ -229,6 +232,7 @@ class CoherenciaBCI(tk.Tk):
         # ─── EEG ──────────────────────────────────────────────────────────────
         self._eeg_proceso  = None  # subproceso de la ventana EEG
         self.participante_id = "X"  # se actualiza al salir de ConfiguracionPage
+        self.sesion_id       = "X"  # se actualiza al salir de ConfiguracionPage
 
     def abrir_ventana_eeg(self, condicion="EEG", save_path=None):
         """Lanza la ventana EEG como subproceso (solo visualiza, sin guardar)."""
@@ -245,6 +249,7 @@ class CoherenciaBCI(tk.Tk):
 
         path = save_path or EEG_SAVE_PATH
         pid  = self.participante_id
+        sid = self.sesion_id
         idx  = str(self.indice_actual)
 
         script = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -252,7 +257,7 @@ class CoherenciaBCI(tk.Tk):
 
         self._eeg_proceso = subprocess.Popen(
             [sys.executable, script,
-            EEG_STREAM_NAME, path, condicion, pid, idx]
+            EEG_STREAM_NAME, path, condicion, pid, idx, sid],
             # sin creationflags — hereda la consola de la interfaz principal
         )
 
@@ -260,7 +265,7 @@ class CoherenciaBCI(tk.Tk):
         """Crea el flag con la condición → eeg_window.py empieza a guardar."""
         try:
             with open(EEG_FLAG_PATH, 'w') as f:
-                f.write(f"{condicion},{self.participante_id},{self.indice_actual}")
+                f.write(f"{condicion},{self.participante_id},{self.indice_actual},{self.sesion_id}")
             import datetime
             print(f"[FLAG] Creado: {condicion} — {datetime.datetime.now().strftime('%H:%M:%S.%f')}")
         except Exception as e:
@@ -319,10 +324,10 @@ class CoherenciaBCI(tk.Tk):
             ser.write(cmd)
             print(f"[SERIAL] enviado: {repr(cmd)}")
 
-    def iniciar_guardado_serial(self, condicion, pid):
-        fecha    = datetime.now().strftime("%d%m%y")
+    def iniciar_guardado_serial(self, condicion, pid,sid):
+        fecha    = datetime.now().strftime("%y%m%d")
         indice   = self.indice_actual
-        nombre   = f"S{pid}_DINAM_{fecha}_{condicion}_{indice}.csv"
+        nombre   = f"S{pid}_{fecha}_DINAM_{sid}_{indice}_{condicion}.csv"
         os.makedirs(self.serial_save_path, exist_ok=True)
         filepath = os.path.join(self.serial_save_path, nombre)
         self.serial_data_file  = open(filepath, 'w', newline='')
@@ -416,6 +421,17 @@ class ConfiguracionPage(tk.Frame):
         )
         self.participanteID.pack(side="left", ipady=4)
         self.participanteID.insert(0, "1")
+        # ID Sesion (derecha del encabezado)
+        id_frame = tk.Frame(hdr, bg=CARD_WHITE)
+        id_frame.pack(side="left", padx=(60, 0))
+        tk.Label(id_frame, text="Sesión (OV,OK,CV,CK):", font=F_LABEL,
+                 fg=TEXT_MUTED, bg=CARD_WHITE).pack(side="left", padx=(0, 8))
+        self.sesionID = tk.Entry(
+            id_frame, font=F_LABEL, fg=NAVY, bg=BG_LIGHT,
+            relief="flat", width=12, bd=4
+        )
+        self.sesionID.pack(side="left", ipady=4)
+        self.sesionID.insert(0, "OV")
 
         # ── Fila de tarjetas ─────────────────────────────────────
         cards_row = tk.Frame(self, bg=CARD_WHITE)
@@ -524,29 +540,37 @@ class ConfiguracionPage(tk.Frame):
         self.status_dot.config(fg=GREEN)  # verde si conecta
 
     def _generar_orden(self):
-        condiciones = ["Reposo", "MI", "ME"]
+        condiciones = ["RE", "MI", "ME"]
         condiciones2 = ["MI", "ME"]
         self.controller.indice_actual = 0
         random.shuffle(condiciones)          # 3 sin repetir
         orden = condiciones + [random.choice(condiciones2)]  # +1 que puede repetir
         self.controller.orden_sesion = orden  #  guardar en controlador
         self.controller.participante_id = self.participanteID.get().strip() or "X"  # actualizar ID
+        self.controller.sesion_id = self.sesionID.get().strip() or "X"  # actualizar ID de sesión
+        # Crea directorio para guardar registros de este participante (si no existe)
+        (Path("registrosCMC") / f"S{self.controller.participante_id}").mkdir(exist_ok=True)
+        base = Path("registrosCMC") / f"S{self.controller.participante_id}"
+        subcarpetas = ["TXT", "EEG", "EMG", "DINAM"]
+        for carpeta in subcarpetas:
+            (base / carpeta).mkdir(parents=True, exist_ok=True)
         for lbl, cond in zip(self.orden_labels, orden):
             lbl.config(text=cond)
-        with open(f"registrosCMC/P{self.controller.participante_id}_{datetime.now().strftime('%Y-%m-%d')}.txt", "w") as archivo:
+        archivo_path = base / "TXT" / f"S{self.controller.participante_id}{self.controller.sesion_id}_{datetime.now().strftime('%Y-%m-%d')}.txt"
+        with open(archivo_path, "w") as archivo:
             archivo.write(f"Participante {self.controller.participante_id}\n")
             archivo.write(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             archivo.write("Orden de condiciones:\n")
             for i, cond in enumerate(self.controller.orden_sesion, start=1):
                 archivo.write(f"{i}: {cond}\n")
         # Prepara ventana EEG
-        self.controller.abrir_ventana_eeg()
+        self.controller.abrir_ventana_eeg(save_path=str(base / "EEG"))
         
 
     def _iniciar_calibracion(self):
         # TODO: navegar a CalibracionPage
         if self.controller:
-            self.controller.show_frame("CalibracionPage")
+            self.controller.serial_send(CMD_CALIBRATE)  # decirle a Arduino que empiece a enviar datos
 
    
     def on_enter(self):
@@ -771,7 +795,7 @@ class CalibracionPage(tk.Frame):
             return
         siguiente_cond = ctrl.orden_sesion[ctrl.indice_actual]
         mapa = {
-            "Reposo" : "REPage",
+            "RE" : "REPage",
             "MI"     : "MIPage",
             "ME"     : "RegistroPage",
         }
@@ -880,8 +904,9 @@ class RegistroPage(tk.Frame):
         self.start_btn.config(text="Detener")
         self.instr.config(text="¡Mantén la fuerza en la zona verde!")
         pid = self.controller.participante_id
-        self.controller.serial_save_path = EEG_SAVE_PATH
-        self.controller.iniciar_guardado_serial(condicion="ME", pid=pid)
+        sid = self.controller.sesion_id
+        self.controller.serial_save_path = os.path.join(EEG_SAVE_PATH, f"S{pid}", "DINAM")
+        self.controller.iniciar_guardado_serial(condicion="ME", pid=pid, sid=sid)
         # Vaciar cola por si quedaron datos de una sesión anterior
         while not self.controller.serial_queue.empty():
             self.controller.serial_queue.get_nowait()
@@ -987,7 +1012,7 @@ class RegistroPage(tk.Frame):
             return
         siguiente_cond = ctrl.orden_sesion[ctrl.indice_actual]
         mapa = {
-            "Reposo" : "REPage",
+            "RE" : "REPage",
             "MI"     : "MIPage",
             "ME"     : "RegistroPage",
         }
@@ -1113,7 +1138,7 @@ class MIPage(tk.Frame):
             ctrl.show_frame("MenuPage")
             return
         siguiente_cond = ctrl.orden_sesion[ctrl.indice_actual]
-        mapa = {"Reposo": "REPage", "MI": "MIPage", "ME": "RegistroPage"}
+        mapa = {"RE": "REPage", "MI": "MIPage", "ME": "RegistroPage"}
         ctrl.indice_actual += 1
         ctrl.show_frame(mapa[siguiente_cond])
 
@@ -1195,7 +1220,7 @@ class REPage(tk.Frame):
         self.result_lbl.config(text="")
         self.start_btn.config(text="Detener")
         self._tick()
-        self.controller.iniciar_grabacion_eeg(condicion="Reposo")
+        self.controller.iniciar_grabacion_eeg(condicion="RE")
         
     def _stop(self):
         self._running = False
@@ -1235,7 +1260,7 @@ class REPage(tk.Frame):
             ctrl.show_frame("MenuPage")
             return
         siguiente_cond = ctrl.orden_sesion[ctrl.indice_actual]
-        mapa = {"Reposo": "REPage", "MI": "MIPage", "ME": "RegistroPage"}
+        mapa = {"RE": "REPage", "MI": "MIPage", "ME": "RegistroPage"}
         ctrl.indice_actual += 1
         ctrl.show_frame(mapa[siguiente_cond])
 

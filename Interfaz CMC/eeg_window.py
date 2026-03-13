@@ -83,12 +83,13 @@ def filtrar(y, lowcut=1, highcut=40, fs=250, order=4):
 
 # ─── Ventana principal ────────────────────────────────────────────────────────
 class VentanaEEG(QtWidgets.QMainWindow):
-    def __init__(self, stream_name, save_path, condicion, pid, indice):
+    def __init__(self, stream_name, save_path, condicion, pid, indice, sid):
         super().__init__()
         self.stream_name = stream_name
         self.save_path   = save_path
         self.condicion   = condicion
         self.pid         = pid
+        self.sid         = sid
         self.indice      = indice
         self.buffer      = []
         self.eeg         = EEGConGrafica()
@@ -156,10 +157,10 @@ class VentanaEEG(QtWidgets.QMainWindow):
             p.setMenuEnabled(False)
             p.hideButtons()
             p.setXRange(0, 8.0, padding=0)  # 8 s fijos
-            p.getAxis('left').setTextPen(AXIS_COLOR)
-            p.getAxis('left').setLabel(nombre, color=COLORES[nombre], size='9pt')
+            p.getAxis('left').setTextPen(color=COLORES[nombre])
+            p.getAxis('left').setLabel(nombre, color=COLORES[nombre], size='15pt')
             p.getAxis('bottom').setTextPen(AXIS_COLOR)
-            p.getAxis('left').setPen(GRID_COLOR)
+            p.getAxis('left').setPen(color=COLORES[nombre], width=1)
             p.getAxis('bottom').setPen(GRID_COLOR)
             p.showGrid(x=False, y=True, alpha=0.15)
 
@@ -193,12 +194,13 @@ class VentanaEEG(QtWidgets.QMainWindow):
                 self.condicion = partes[0] if len(partes) > 0 else self.condicion
                 self.pid       = partes[1] if len(partes) > 1 else self.pid
                 self.indice    = partes[2] if len(partes) > 2 else self.indice
+                self.sid       = partes[3] if len(partes) > 3 else self.sid
             except Exception:
                 pass
 
             os.makedirs(self.save_path, exist_ok=True)
-            fecha  = datetime.datetime.now().strftime("%d%m%y")
-            nombre = f"S{self.pid}_EEG_{fecha}_{self.condicion}_{self.indice}.csv"
+            fecha  = datetime.datetime.now().strftime("%y%m%d")
+            nombre = f"S{self.pid}_{fecha}_EEG_{self.sid}_{self.indice}_{self.condicion}.csv"
             ruta   = os.path.join(self.save_path, nombre)
             self._csv_file   = open(ruta, 'w', newline='', encoding='utf-8')
             self._csv_writer = csv.writer(self._csv_file)
@@ -297,8 +299,9 @@ if __name__ == '__main__':
     condicion   = sys.argv[3] if len(sys.argv) > 3 else 'EEG'
     pid         = sys.argv[4] if len(sys.argv) > 4 else 'X'
     indice      = sys.argv[5] if len(sys.argv) > 5 else '0'
+    sid         = sys.argv[6] if len(sys.argv) > 6 else 'XX'
 
     app = QtWidgets.QApplication(sys.argv)
-    win = VentanaEEG(stream_name, save_path, condicion, pid, indice)
+    win = VentanaEEG(stream_name, save_path, condicion, pid, indice, sid)
     win.show()
     sys.exit(app.exec_())
