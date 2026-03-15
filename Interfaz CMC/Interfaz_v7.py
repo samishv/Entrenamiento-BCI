@@ -49,24 +49,24 @@ except serial.SerialException as e:
     
 
 # ─── Paleta ──────────────────────────────────────────────────────────────────
-BG_MENU     = "#5B9DB5"
-BG_LIGHT    = "#EEF4F7"
-CARD_WHITE  = "#FFFFFF"
-GREEN_MAIN  = "#6DC14B"
-GREEN_LIGHT = "#B8E4A0"
-GREEN_ZONE  = "#D4F0C0"
-NAVY        = "#1E3A5F"
-TEXT_MUTED  = "#7A9AAF"
-TEXT_MUTEDPLUS  = "#D3D3D3"
-PROG_BG     = "#C8DDE6"
-ZONE_BORDER = "#6DC14B"
-WARN_RED    = "#E05555"
-TEAL       = "#2BBCD4"
-ORANGE     = "#F5A623"
-GREEN      = "#5CB85C"
-RED_DOT    = "#E74C3C"
-GRAY_TEXT  = "#282828"
-DARK_TEXT  = "#2C3E50"
+BG_MENU        = "#0D1B2A"
+BG_LIGHT       = "#121B24"
+CARD_WHITE     = "#162840"
+GREEN_MAIN     = "#00C4A0"  # turquesa — acción
+GREEN_LIGHT    = "#0B2B3B"
+GREEN_ZONE     = "#124453"
+NAVY           = "#080F1A"
+TEXT_MUTED     = "#6A9AB0"
+TEXT_MUTEDPLUS = "#3A5A70"
+PROG_BG        = "#0E2035"
+ZONE_BORDER    = "#00C4A0"
+WARN_RED       = "#FF6B6B"  # coral — alerta
+TEAL           = "#38BDF8"  # azul cielo — config
+ORANGE         = "#FBBF24"  # ámbar — orden sesión
+GREEN          = "#00C4A0"
+RED_DOT        = "#FF6B6B"
+GRAY_TEXT      = "#DEE0E3"
+DARK_TEXT      = "#FCFEFF"
 
 # ─── Tipografías ─────────────────────────────────────────────────────────────
 F_TITLE = ("Georgia",   42, "bold")
@@ -92,6 +92,7 @@ def rrect(canvas, x1, y1, x2, y2, r=14, **kw):
     canvas.create_polygon(pts, smooth=True, **kw)
 
 
+# 
 def draw_graph(canvas, history,
                pad_l=70, pad_r=24, pad_t=20, pad_b=40,
                y_max=100, y_ticks=None,
@@ -107,16 +108,16 @@ def draw_graph(canvas, history,
     h = canvas.winfo_height()
     if w < 20 or h < 20:
         return
-
+ 
     gw = w - pad_l - pad_r
     gh = h - pad_t - pad_b
-
+ 
     def gy(val):
         return pad_t + gh - (val / y_max * gh)
-
+ 
     # Marcas del eje Y — automáticas o manuales
     ticks = y_ticks or [int(y_max * i / 5) for i in range(6)]
-
+ 
     # Zona objetivo (fondo sombreado)
     if show_zone and zone_lo is not None and zone_hi is not None:
         y_hi = gy(zone_hi)
@@ -129,7 +130,7 @@ def draw_graph(canvas, history,
         canvas.create_text(w - pad_r - 8, y_hi + 8,
                            text=f"Zona objetivo  {zone_lo}–{zone_hi}%",
                            anchor="ne", font=F_SMALL, fill=ZONE_BORDER)
-
+ 
     # Cuadrícula Y
     for val in ticks:
         y = gy(val)
@@ -137,24 +138,27 @@ def draw_graph(canvas, history,
                            fill="#D0E4EE", dash=(4, 6))
         canvas.create_text(pad_l - 8, y, text=str(val),
                            anchor="e", font=F_SMALL, fill=TEXT_MUTED)
-
-    # Señal
-    data = history[-150:]
+ 
+    # Señal — el punto actual siempre en el centro
+    MITAD = 75                        # puntos visibles a la izquierda del centro
+    data  = history[-MITAD:]          # hasta MITAD puntos pasados
     if len(data) < 2:
         return
-    step = gw / max(len(data) - 1, 1)
-    pts  = [(pad_l + i * step, gy(v)) for i, v in enumerate(data)]
-
-    poly = [(pad_l, pad_t + gh)] + pts + [(pad_l + gw, pad_t + gh)]
+    cx_px = pad_l + gw / 2            # x en píxeles del punto central
+    step  = (gw / 2) / MITAD          # distancia entre muestras
+    pts   = [(cx_px - (len(data) - 1 - i) * step, gy(v))
+             for i, v in enumerate(data)]
+ 
+    poly = [(pad_l, pad_t + gh)] + pts + [(cx_px, pad_t + gh)]
     canvas.create_polygon([c for p in poly for c in p],
                           fill=GREEN_LIGHT, outline="", smooth=True)
     canvas.create_line([c for p in pts for c in p],
                        fill=GREEN_MAIN, width=3, smooth=True)
-
-    # Punto actual
+ 
+    # Punto actual — siempre centrado
     cx, cy = pts[-1]
     canvas.create_oval(cx - 8, cy - 8, cx + 8, cy + 8,
-                       fill=GREEN_MAIN, outline=CARD_WHITE, width=5)
+                       fill=GREEN_MAIN, outline="#BAD8DF", width=3)
 
 
 def draw_timer_bar(canvas, timer_lbl, elapsed_ms, total_ms, label_fmt="{s} / {t} s"):
@@ -170,13 +174,13 @@ def draw_timer_bar(canvas, timer_lbl, elapsed_ms, total_ms, label_fmt="{s} / {t}
     rrect(canvas, 0, 4, w, 36, r=12, fill=PROG_BG, outline="")
     if pct > 0:
         fill_w = max(28, int(w * pct))
-        color  = GREEN_MAIN if pct < 1.0 else NAVY
+        color  = GREEN_LIGHT if pct < 1.0 else NAVY
         rrect(canvas, 0, 4, fill_w, 36, r=12, fill=color, outline="")
         
 def make_card(parent, border_color, width=100, height=380):
     """Frame con borde de color simulado usando un Frame exterior."""
     outer = tk.Frame(parent, bg=border_color, padx=3, pady=3)
-    inner = tk.Frame(outer, bg=CARD_WHITE)
+    inner = tk.Frame(outer, bg=BG_LIGHT)
     inner.pack(fill="both", expand=True)
     inner.pack_propagate(False)
     return outer, inner
@@ -185,7 +189,7 @@ def make_card(parent, border_color, width=100, height=380):
 def colored_btn(parent, text, color, command=None, width=14):
     return tk.Button(
         parent, text=text, font=F_BTN,
-        bg=color, fg=CARD_WHITE, activebackground=color,
+        bg=color, fg="#FFFFFF", activebackground=color,
         relief="flat", bd=0, padx=12, pady=8,
         cursor="hand2", width=width, command=command
     )
@@ -355,7 +359,7 @@ class MenuPage(tk.Frame):
         card.place(relx=0.5, rely=0.5, anchor="center", width=840, height=480)
 
         tk.Label(card, text="Coherencia\ncorticomuscular",
-                 font=F_TITLE, fg=NAVY, bg=CARD_WHITE,
+                 font=F_TITLE, fg="#FFFFFF", bg=CARD_WHITE,
                  justify="center").pack(pady=(80, 50))
 
         row = tk.Frame(card, bg=CARD_WHITE)
@@ -389,52 +393,51 @@ class MenuPage(tk.Frame):
 
 class ConfiguracionPage(tk.Frame):
     def __init__(self, parent, controller=None):
-        super().__init__(parent, bg=CARD_WHITE)
+        super().__init__(parent, bg=BG_LIGHT)
         self.controller = controller
 
-        hdr = tk.Frame(self, bg=CARD_WHITE)
+        hdr = tk.Frame(self, bg=BG_LIGHT)
         hdr.pack(fill="x", padx=40, pady=(30, 10))
 
         tk.Label(hdr, text="Configuración", font=F_HEAD,
-                 fg=NAVY, bg=CARD_WHITE).pack(side="left")
+                 fg=GREEN_MAIN, bg=BG_LIGHT).pack(side="left")
         
         tk.Button(hdr, text="← Menú", command=self._go_menu,
-                  bg=CARD_WHITE, fg=TEXT_MUTED, font=F_LABEL,
+                  bg=BG_LIGHT, fg=TEXT_MUTED, font=F_LABEL,
                   relief="flat", cursor="hand2").pack(side="right")
         
         # Botón al fondo derecho
-        bot = tk.Frame(self, bg=CARD_WHITE)
+        bot = tk.Frame(self, bg=BG_LIGHT)
         bot.pack(side="bottom", fill="x", padx=70, pady=30)
         tk.Button(bot, text="Continuar →",
                   command=lambda: controller.show_frame("CalibracionPage"),
-                  bg=CARD_WHITE, fg=TEXT_MUTED, font=F_LABEL,
+                  bg=BG_LIGHT, fg=TEXT_MUTED, font=F_LABEL,
                   relief="flat", padx=30, pady=12, cursor="hand2").pack(side="right")
 
         # ID participante (derecha del encabezado)
-        id_frame = tk.Frame(hdr, bg=CARD_WHITE)
+        id_frame = tk.Frame(hdr, bg=BG_LIGHT)
         id_frame.pack(side="left", padx=(60, 0))
         tk.Label(id_frame, text="ID de participante:", font=F_LABEL,
-                 fg=TEXT_MUTED, bg=CARD_WHITE).pack(side="left", padx=(0, 8))
-        self.participanteID = tk.Entry(
-            id_frame, font=F_LABEL, fg=NAVY, bg=BG_LIGHT,
+                 fg=GRAY_TEXT, bg=BG_LIGHT).pack(side="left", padx=(0, 8))
+        self.participanteID = tk.Entry(id_frame, font=F_LABEL, fg="#6B7985", bg="#212931",
             relief="flat", width=12, bd=4
         )
         self.participanteID.pack(side="left", ipady=4)
         self.participanteID.insert(0, "1")
         # ID Sesion (derecha del encabezado)
-        id_frame = tk.Frame(hdr, bg=CARD_WHITE)
+        id_frame = tk.Frame(hdr, bg=BG_LIGHT)
         id_frame.pack(side="left", padx=(60, 0))
         tk.Label(id_frame, text="Sesión (OV,OK,CV,CK):", font=F_LABEL,
-                 fg=TEXT_MUTED, bg=CARD_WHITE).pack(side="left", padx=(0, 8))
+                 fg=GRAY_TEXT, bg=BG_LIGHT).pack(side="left", padx=(0, 8))
         self.sesionID = tk.Entry(
-            id_frame, font=F_LABEL, fg=NAVY, bg=BG_LIGHT,
+            id_frame, font=F_LABEL, fg="#6B7985", bg="#212931",
             relief="flat", width=12, bd=4
         )
         self.sesionID.pack(side="left", ipady=4)
         self.sesionID.insert(0, "OV")
 
         # ── Fila de tarjetas ─────────────────────────────────────
-        cards_row = tk.Frame(self, bg=CARD_WHITE)
+        cards_row = tk.Frame(self, bg=BG_LIGHT)
         cards_row.pack(fill="both", expand=True, padx=70, pady=5)
 
         # Columnas equidistantes
@@ -449,32 +452,31 @@ class ConfiguracionPage(tk.Frame):
     # ── Tarjeta 1: Conexión serial ────────────────────────────────
     def _build_serial_card(self, parent):
         tk.Label(parent, text="Conexión serial", font=F_BTN,
-                 fg=TEAL, bg=CARD_WHITE).grid(row=0, column=0, pady=(100, 8))
+                 fg=TEAL, bg=BG_LIGHT).grid(row=0, column=0, pady=(100, 8))
 
         outer, card = make_card(parent, TEAL, height=660)
         outer.grid(row=1, column=0, padx=15, sticky="nsew")
 
         # Botón
-        btn_frame = tk.Frame(card, bg=CARD_WHITE)
+        btn_frame = tk.Frame(card, bg=BG_LIGHT)
         btn_frame.pack(side="bottom", pady=30)
         colored_btn(btn_frame, "Conectar", TEAL,
                     command=self._conectar).pack()
         
         # Puerto
-        port_row = tk.Frame(card, bg=CARD_WHITE)
+        port_row = tk.Frame(card, bg=BG_LIGHT)
         port_row.pack(fill="both", expand=True, padx=20, pady=20)
         tk.Label(port_row, text="Puerto:", font=F_LABEL,
-                 fg=DARK_TEXT, bg=CARD_WHITE).pack(pady=(80, 20))
-        self.puerto = tk.Entry(port_row, font=F_LABEL, fg=DARK_TEXT,
-                               bg="#DDE3EE", relief="flat", width=10, bd=4)
+                 fg=DARK_TEXT, bg=BG_LIGHT).pack(pady=(80, 20))
+        self.puerto = tk.Entry(port_row, font=F_LABEL, fg="#6B7985", bg="#212931", relief="flat", width=10, bd=4)
         self.puerto.pack()
         self.puerto.insert(0, "COM7")
 
         # Status
         tk.Label(port_row, text="Conexión Status", font=F_LABEL,
-                 fg=DARK_TEXT, bg=CARD_WHITE).pack(pady=(50, 8))
+                 fg=DARK_TEXT, bg=BG_LIGHT).pack(pady=(50, 0))
         self.status_dot = tk.Label(port_row, text="△", font=("Helvetica", 32),
-                                   fg=RED_DOT, bg=CARD_WHITE)
+                                   fg=RED_DOT, bg=BG_LIGHT)
         self.status_dot.pack(pady=(0,80))
 
 
@@ -482,30 +484,30 @@ class ConfiguracionPage(tk.Frame):
     # ── Tarjeta 2: Generar orden de sesión ───────────────────────
     def _build_orden_card(self, parent):
         tk.Label(parent, text="Generar orden de sesión", font=F_BTN,
-                 fg=ORANGE, bg=CARD_WHITE).grid(row=0, column=1, pady=(100, 8))
+                 fg=ORANGE, bg=BG_LIGHT).grid(row=0, column=1, pady=(100, 8))
 
         outer, card = make_card(parent, ORANGE, height=360)
         outer.grid(row=1, column=1, padx=15, sticky="nsew")
 
         # Botón
-        btn_frame = tk.Frame(card, bg=CARD_WHITE)
+        btn_frame = tk.Frame(card, bg=BG_LIGHT)
         btn_frame.pack(side="bottom", pady=20)
         colored_btn(btn_frame, "Generar", ORANGE,
                     command=self._generar_orden).pack()
 
         # Lista de condiciones (se actualiza al generar)
         self.orden_labels = []
-        list_frame = tk.Frame(card, bg=CARD_WHITE)
+        list_frame = tk.Frame(card, bg=BG_LIGHT)
         list_frame.place(relx=0.5, rely=0.4, anchor="center")
         condiciones_default = ["RE", "MI", "ME","MI"]
         for i, cond in enumerate(condiciones_default, start=1):
-            row = tk.Frame(list_frame, bg=CARD_WHITE)
+            row = tk.Frame(list_frame, bg=BG_LIGHT)
             row.pack(fill="x", padx=(150,20), pady=20)
             num = tk.Label(row, text=str(i), font=F_ORDER_N,
-                           fg=ORANGE, bg=CARD_WHITE, width=3)
+                           fg=ORANGE, bg=BG_LIGHT, width=3)
             num.pack(side="left")
             lbl = tk.Label(row, text=cond, font=F_ORDER_T,
-                           fg=GRAY_TEXT, bg=CARD_WHITE)
+                           fg=GRAY_TEXT, bg=BG_LIGHT)
             lbl.pack(padx=(50,200))
             self.orden_labels.append(lbl)
 
@@ -514,23 +516,23 @@ class ConfiguracionPage(tk.Frame):
     # ── Tarjeta 3: Calibración ────────────────────────────────────
     def _build_calibracion_card(self, parent):
         tk.Label(parent, text="Calibración", font=F_BTN,
-                 fg=GREEN_MAIN, bg=CARD_WHITE).grid(row=0, column=2, pady=(100, 8))
+                 fg="#6DAB21", bg=BG_LIGHT).grid(row=0, column=2, pady=(100, 8))
 
-        outer, card = make_card(parent, GREEN_MAIN, height=360)
+        outer, card = make_card(parent, "#6DAB21", height=360)
         outer.grid(row=1, column=2, padx=15, sticky="nsew")
 
         # Botón
-        btn_frame = tk.Frame(card, bg=CARD_WHITE)
+        btn_frame = tk.Frame(card, bg=BG_LIGHT)
         btn_frame.pack(side="bottom", pady=20)
-        colored_btn(btn_frame, "Iniciar", GREEN,
+        colored_btn(btn_frame, "Iniciar", "#6DAB21",
                     command=self._iniciar_calibracion).pack()
         
-        img_frame = tk.Frame(card, bg=CARD_WHITE)
+        img_frame = tk.Frame(card, bg=BG_LIGHT)
         img_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
-        img_pil = Image.open("vernier.jpg").resize((320, 400))
+        img_pil = Image.open("vernierDARK.jpg").resize((320, 400))
         img_tk  = ImageTk.PhotoImage(img_pil)
-        lbl = tk.Label(img_frame, image=img_tk, bg=CARD_WHITE)
+        lbl = tk.Label(img_frame, image=img_tk, bg=BG_LIGHT)
         lbl.pack(expand=True, pady=(30, 10))
         lbl.img_ref = img_tk
 
@@ -599,7 +601,7 @@ class CalibracionPage(tk.Frame):
         # Header
         hdr = tk.Frame(self, bg=BG_LIGHT)
         hdr.pack(fill="x", padx=70, pady=(50, 0))
-        tk.Label(hdr, text="Calibración", font=F_HEAD, fg=NAVY,
+        tk.Label(hdr, text="Calibración", font=F_HEAD, fg=GREEN_MAIN,
                  bg=BG_LIGHT).pack(side="left")
         tk.Button(hdr, text="← Menú", command=self._go_menu,
                   bg=BG_LIGHT, fg=TEXT_MUTED, font=F_LABEL,
@@ -627,7 +629,7 @@ class CalibracionPage(tk.Frame):
         tk.Label(timer_hdr, text="Tiempo del ensayo",
                  font=F_SMALL, fg=TEXT_MUTED, bg=BG_LIGHT).pack(side="left")
         self.timer_lbl = tk.Label(timer_hdr, text=f"0 / {CALIB_DURATION} s",
-                                  font=F_TIMER, fg=NAVY, bg=BG_LIGHT)
+                                  font=F_TIMER, fg=TEXT_MUTED, bg=BG_LIGHT)
         self.timer_lbl.pack(side="right")
         self.bar_cv = tk.Canvas(timer_wrap, height=40,
                                 bg=BG_LIGHT, highlightthickness=0)
@@ -820,7 +822,7 @@ class RegistroPage(tk.Frame):
         # Header
         hdr = tk.Frame(self, bg=BG_LIGHT)
         hdr.pack(fill="x", padx=70, pady=(50, 0))
-        tk.Label(hdr, text="M E", font=F_HEAD, fg=NAVY,
+        tk.Label(hdr, text="M E", font=F_HEAD, fg=GREEN_MAIN,
                  bg=BG_LIGHT).pack(side="left")
         tk.Button(hdr, text="← Menú", command=self._go_menu,
                   bg=BG_LIGHT, fg=TEXT_MUTED, font=F_LABEL,
@@ -853,7 +855,7 @@ class RegistroPage(tk.Frame):
         tk.Label(timer_hdr, text="Tiempo del ensayo",
                   font=F_SMALL, fg=TEXT_MUTED, bg=BG_LIGHT).pack(side="left")
         self.timer_lbl = tk.Label(timer_hdr, text=f"0 / {REGISTRO_DURATION} s",
-                                  font=F_TIMER, fg=NAVY, bg=BG_LIGHT)
+                                  font=F_TIMER, fg=TEXT_MUTED, bg=BG_LIGHT)
         self.timer_lbl.pack(side="right")
         
         
@@ -1150,40 +1152,40 @@ class REPage(tk.Frame):
     
     """
     def __init__(self, parent, controller):
-        super().__init__(parent, bg=GRAY_TEXT)
+        super().__init__(parent, bg=PROG_BG)
         self.controller  = controller
         self._running    = False
         self._elapsed_ms = 0
 
 
         # Header
-        hdr = tk.Frame(self, bg=GRAY_TEXT)
+        hdr = tk.Frame(self, bg=PROG_BG)
         hdr.pack(fill="x",padx=70, pady=(50, 0))
 
         tk.Button(hdr, text="← Menú", command=self._go_menu,
-                  bg=GRAY_TEXT, fg=CARD_WHITE, font=F_LABEL,
+                  bg=PROG_BG, fg=CARD_WHITE, font=F_LABEL,
                   relief="flat", cursor="hand2").pack(side="right")
         
         # Instrucción
         self.instr = tk.Label(self,
             text=f"Mantente en REPOSO durante {REGISTRO_DURATION} segundos.",
-            font=F_LABEL, fg=CARD_WHITE, bg=GRAY_TEXT)
+            font=F_LABEL, fg=GRAY_TEXT, bg=PROG_BG)
         self.instr.pack(pady=(16, 0))
         
         # Botón al fondo derecho
-        bot = tk.Frame(self, bg=GRAY_TEXT)
+        bot = tk.Frame(self, bg=PROG_BG)
         bot.pack(side="bottom", fill="x", padx=70, pady=30)
         tk.Button(bot, text="Continuar →",
                   command=lambda: self._siguiente(),
-                  bg=GRAY_TEXT, fg=CARD_WHITE, font=F_LABEL,
+                  bg=PROG_BG, fg=CARD_WHITE, font=F_LABEL,
                   relief="flat", padx=30, pady=12, cursor="hand2").pack(side="right")
         
         
         self.start_btn = tk.Button(bot, text="Iniciar", command=self._toggle,
-                                    bg=GRAY_TEXT, fg="white", font=F_BTN,
+                                    bg=BG_MENU, fg="white", font=F_BTN,
                                     relief="flat", padx=30, pady=12, cursor="hand2")
         self.start_btn.pack(side="left")
-        self.result_lbl = tk.Label(bot, text="", font=F_LABEL, fg=GRAY_TEXT, bg=GRAY_TEXT)
+        self.result_lbl = tk.Label(bot, text="", font=F_LABEL, fg=PROG_BG, bg=PROG_BG)
         self.result_lbl.pack(side="left", padx=30)
 
 
