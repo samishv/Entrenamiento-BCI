@@ -16,10 +16,11 @@ plt.close('all')
 # CONFIGURACIÓN
 # ─────────────────────────────────────────────────────────────────────────────
 
-RUTA_NPY  = r"D:\luiso\Documentos\Luis\UPIITA\TT\Coherencia\S18\EEG\S18_260313_EEG_OK_4_MI.npy"
+RUTA_NPY  = r"D:\luiso\Documentos\Luis\UPIITA\TT\Coherencia\S18\EEG\S18_260313_EEG_OV_3_MI.npy"
 
-FS        = 250                 # Frecuencia de muestreo (Hz)
-NPERSEG   = 1000                # Resolución Welch: FS/NPERSEG = Hz por barra (500-0.5Hz) (1000-0.25Hz) MAX 125Hz
+FS           = 250                 # Frecuencia de muestreo (Hz)
+VENTANA_SEG  = 4.0               # Resolución Welch: FS/NPERSEG = Hz por barra (500-0.5Hz) (1000-0.25Hz) MAX 125Hz
+NPERSEG      = int(VENTANA_SEG*FS)
 
 PAD_MUESTRAS = 10 * FS          # Muestras para padding: PAD - 28 segs - PAD
 ORDEN        = 4                # Orden filtro Butterworth
@@ -29,12 +30,12 @@ Q_NOTCH      = 30               # Factor de calidad del notch
 CANALES = ['Fz', 'FC3', 'FCz', 'FC4', 'Cz', 'C3', 'C4']
 
 FIGURAS = [
-    ('EEG Completo',    0.5,  45.0),
-    ('Delta δ',         0.5,   4.0),
-    ('Theta θ',         4.0,   8.0),
-    ('Mu μ',            8.0,  13.0),
-    ('Beta β',         13.0,  30.0),
-    ('Gamma γ',        30.0,  45.0),
+    # ('EEG Completo',    0.5,  45.0),
+    # ('Delta δ',         0.5,   4.0),
+    # ('Theta θ',         4.0,   8.0),
+    # ('Mu μ',            8.0,  13.0),
+    # ('Beta β',         13.0,  30.0),
+    # ('Gamma γ',        30.0,  45.0),
     ('Mu + Beta μ+β',   8.0,  30.0),
 ]
 
