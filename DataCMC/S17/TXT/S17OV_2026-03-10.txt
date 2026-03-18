@@ -1,0 +1,8 @@
+Participante 17
+Fecha: 2026-03-10 19:19:16
+
+Orden de condiciones:
+1: ME
+2: MI
+3: Reposo
+4: ME
