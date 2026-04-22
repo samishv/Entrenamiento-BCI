@@ -1,26 +1,19 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Mar 17 22:36:45 2026
-
-@author: luiso
-"""
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import iirnotch, butter, tf2sos, sosfiltfilt
 
-plt.close('all')
-
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN
 # ─────────────────────────────────────────────────────────────────────────────
 
-RUTA_EMG   = r"D:\luiso\Documentos\Luis\UPIITA\TT\Coherencia\S4\EMG\S4_260317_EMG_OV_1_ME.npy"
-RUTA_DINAM = r"D:\luiso\Documentos\Luis\UPIITA\TT\Coherencia\S4\DINAM\S4_260317_DINAM_OV_3_ME.npy"
+if "RUTA_EMG" not in globals():
+    RUTA_EMG   = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\S17\EMG\S17_260421_EMG_OV_2_ME.npy"
+
+if "RUTA_DINAM" not in globals():
+    RUTA_DINAM = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\S17\DINAM\S17_260421_DINAM_OV_2_ME.npy"
 
 FS    = 1000                                            # Frecuencia de muestreo (Hz)
-FS_DINAM = 50                                           # Frecuencia de muestreo dinamómetro (Hz)
 ORDEN = 4                                               # Orden filtro Butterworth
 
 FRECUENCIAS_NOTCH = [19.6, 60, 120, 180, 240, 300]      # Hz
@@ -31,28 +24,29 @@ FIGURAS = [
     # ('Energía Dominante', 20.0, 150.0),
 ]
 
-MUSCULOS = ["BR", "ERLC", "PL", "ECC"]
+MUSCULOS = ["FCU", "ECRL", "ECU"]
 
-COLORES_EMG = ["#99b2ff", "#8fc3eb", "#85d2d6", "#a4e1b6"]
+COLORES_EMG = ["#99b2ff", "#90c7db", "#b0dfa9"]
 COLOR_DINAM = "#fefb6e"
 
-BG_FIG      = "#0D1117"
-BG_AX       = "#161B22"
-COLOR_GRID  = "#30363D"
-COLOR_TICK  = "#8B949E"
-COLOR_LABEL = "#C9D1D9"
-COLOR_TITLE = "#E6EDF3"
+BG_FIG      = '#0a0a0a'
+BG_AX       = '#0d0d0d'
+COLOR_GRID  = '#404040'
+COLOR_TICK  = '#a5a5a5'
+COLOR_LABEL = '#d1d1d1'
+COLOR_TITLE = '#ffffff'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PARASEO DE LAS FIGURAS
 # ─────────────────────────────────────────────────────────────────────────────
 
 CONDICION_MAP = {
-    'OV': 'Ojos Abiertos - Mov. Visual',
-    'OK': 'Ojos Abiertos - Mov. Cinestésico',
-    'CK': 'Ojos Cerrados - Mov. Cinestésico',
-    'CV': 'Ojos Cerrados - Mov. Visual',
+    'OV': 'Ojos Abiertos - Movimiento Visual',
+    'OK': 'Ojos Abiertos - Movimiento Cinestésico',
+    'CK': 'Ojos Cerrados - Movimiento Cinestésico',
+    'CV': 'Ojos Cerrados - Movimiento Visual',
 }
+
 ESTADO_MAP = {
     'ME': 'Movimiento Ejecutado',
     'MI': 'Movimiento Imaginado',
@@ -60,34 +54,20 @@ ESTADO_MAP = {
 }
 
 def parsear_nombre_archivo(ruta):
-    nombre = os.path.splitext(os.path.basename(ruta))[0]
-    partes = nombre.split('_')
-    sujeto    = partes[0]
-    condicion = partes[3]
-    estado    = partes[5]
-    desc_cond   = CONDICION_MAP.get(condicion, condicion)
-    desc_estado = ESTADO_MAP.get(estado, estado)
-    return f"Sujeto {sujeto[1:]}  |  {desc_cond}  |  {desc_estado}"
+    nombre = os.path.splitext(os.path.basename(ruta))[0]        # 'S17_260310_EEG_CK_3_RE'
+    partes = nombre.split('_')                                  # ['S17','260310','EEG','CK','3','RE']
+
+    sujeto    = partes[0]                                       # 'S17'
+    condicion = partes[3]                                       # 'CK'
+    estado    = partes[5]                                       # 'RE'
+
+    num_sujeto   = sujeto[1:]                                   # '17'
+    desc_cond    = CONDICION_MAP.get(condicion, condicion)
+    desc_estado  = ESTADO_MAP.get(estado, estado)
+
+    return f"Sujeto {num_sujeto}  |  {desc_cond}  |  {desc_estado}"
 
 PIE_FIGURA = parsear_nombre_archivo(RUTA_DINAM)
-print(f"\nMetadatos:\n  {PIE_FIGURA}\n")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PANTALLA COMPLETA
-# ─────────────────────────────────────────────────────────────────────────────
-
-def pantalla_completa(fig):
-    try:
-        manager = fig.canvas.manager
-        try:    manager.window.state('zoomed');   return
-        except: pass
-        try:    manager.window.showMaximized();   return
-        except: pass
-        try:    manager.frame.Maximize(True);     return
-        except: pass
-        fig.set_size_inches(19, 10.5)
-    except:
-        fig.set_size_inches(19, 10.5)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CARGADERA DE COSAS
@@ -97,7 +77,6 @@ def cargar_archivo(ruta, nombre):
     if not os.path.exists(ruta):
         raise FileNotFoundError(f"No se encontró: {ruta}")
     data = np.load(ruta)
-    print(f"[{nombre}] Shape: {data.shape} | dtype: {data.dtype}")
     return data
 
 emg_data   = cargar_archivo(RUTA_EMG,   "EMG")
@@ -119,33 +98,24 @@ t_emg      = np.arange(n_muestras)
 
 # Eje de tiempo del dinamómetro en segundos
 n_dinam  = len(dinam_data)
-t_dinam = np.linspace(0, 28, n_dinam)
-
-# ylim del dinamómetro basado en promedio
-mean_din      = np.mean(dinam_data)
-ylim_din_min  = mean_din * (20 / 30)
-ylim_din_max  = mean_din * (40 / 30)
-print(f"\nDinamómetro — promedio: {mean_din:.2f} N  |  ylim: [{ylim_din_min:.2f}, {ylim_din_max:.2f}] N")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ノッチ・レクイエム
-# ─────────────────────────────────────────────────────────────────────────────
-
-print("\nEtapa 1 — Filtros Notch en cascada...\n")
-emg_notch = np.zeros_like(emg_data, dtype=np.float64)
-for ch in range(n_canales):
-    resultado = emg_data[ch].astype(np.float64)
-    for f in FRECUENCIAS_NOTCH:
-        if 0 < f < FS / 2:
-            b, a      = iirnotch(f, Q_NOTCH, fs=FS)
-            sos       = tf2sos(b, a)
-            resultado = sosfiltfilt(sos, resultado)
-    emg_notch[ch] = resultado
-    print(f"  Canal {ch+1}: OK  ({FRECUENCIAS_NOTCH} Hz eliminados)")
+t_dinam = np.linspace(0, emg_data.shape[1]/FS, n_dinam)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FUNCIONES
 # ─────────────────────────────────────────────────────────────────────────────
+
+def pantalla_completa(fig):
+    try:
+        manager = fig.canvas.manager
+        try:    manager.window.state('zoomed');   return
+        except: pass
+        try:    manager.window.showMaximized();   return
+        except: pass
+        try:    manager.frame.Maximize(True);     return
+        except: pass
+        fig.set_size_inches(19, 10.5)
+    except:
+        fig.set_size_inches(19, 10.5)
 
 def aplicar_pasabanda(emg, f_low, f_high, fs, orden):
     sos      = butter(orden, [f_low, f_high], btype='bandpass', fs=fs, output='sos')
@@ -173,7 +143,7 @@ def estilo_ax(ax):
 def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
 
     fig, axes = plt.subplots(
-        5, 2,
+        4, 2,
         gridspec_kw={'width_ratios': [1, 4], 'hspace': 0.15, 'wspace': 0.08}
     )
     fig.patch.set_facecolor(BG_FIG)
@@ -193,7 +163,7 @@ def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
 
         # ── FFT (columna izquierda) ───────────────────────────────────────
         freqs, mag = calcular_fft(emg_filt[i], fs)
-        ax_fft.plot(freqs, mag, color=color, linewidth=0.7, alpha=0.92)
+        ax_fft.plot(freqs, mag, color=color, linewidth=0.75, alpha=0.92)
         ax_fft.set_xlim(0, fs / 2)
         estilo_ax(ax_fft)
         if not es_ultima_fila_emg:
@@ -204,7 +174,7 @@ def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
             ax_fft.set_title("FFT  [|X(f)|]", color=COLOR_LABEL, fontsize=8, pad=3)
 
         # ── Señal procesada (columna derecha) ─────────────────────────────
-        ax_sig.plot(t_e, emg_filt[i], color=color, linewidth=0.6, alpha=0.92)
+        ax_sig.plot(t_e, emg_filt[i], color=color, linewidth=0.75, alpha=0.92)
         ax_sig.set_xlim(0, len(t_e) - 1)
         estilo_ax(ax_sig)
         if not es_ultima_fila_emg:
@@ -212,20 +182,19 @@ def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
         # else:
         #     # ax_sig.set_xlabel("Muestras", color=COLOR_LABEL, fontsize=8)
         if i == 0:
-            ax_sig.set_title("Señal filtrada  [mV]", color=COLOR_LABEL, fontsize=8, pad=3)
+            ax_sig.set_title("Señal filtrada  [µV]", color=COLOR_LABEL, fontsize=8, pad=3)
 
     # ── Fila 4 col 0: vacío ───────────────────────────────────────────────
-    axes[4, 0].set_visible(False)
+    axes[3, 0].set_visible(False)
 
     # ── Fila 4 col 1: dinamómetro ─────────────────────────────────────────
-    ax_din = axes[4, 1]
-    ax_din.plot(t_d, dinam, color=COLOR_DINAM, linewidth=0.75, alpha=0.95)
+    ax_din = axes[3, 1]
+    ax_din.plot(t_d, dinam, color=COLOR_DINAM, linewidth=1.5, alpha=0.95)
     ax_din.set_ylabel("DINAMÓMETRO\n[N]", color=COLOR_DINAM,
                       fontsize=8, rotation=0, labelpad=40, va='center')
     ax_din.tick_params(axis='y', colors=COLOR_DINAM)
     ax_din.set_xlabel("Tiempo [s]", color=COLOR_LABEL, fontsize=8)
     ax_din.set_xlim(t_d[0], t_d[-1])
-    ax_din.set_ylim(ylim_din_min, ylim_din_max)
     estilo_ax(ax_din)
 
     # Título y pie
@@ -240,14 +209,30 @@ def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
     return fig
 
 # ─────────────────────────────────────────────────────────────────────────────
+# ノッチ・レクイエム
+# ─────────────────────────────────────────────────────────────────────────────
+
+print("\n  Etapa 1 — Filtros Notch en cascada...\n")
+emg_notch = np.zeros_like(emg_data, dtype=np.float64)
+for ch in range(n_canales):
+    resultado = emg_data[ch].astype(np.float64)
+    for f in FRECUENCIAS_NOTCH:
+        if 0 < f < FS / 2:
+            b, a      = iirnotch(f, Q_NOTCH, fs=FS)
+            sos       = tf2sos(b, a)
+            resultado = sosfiltfilt(sos, resultado)
+    emg_notch[ch] = resultado
+    print(f"    Canal {ch+1}: OK  ({FRECUENCIAS_NOTCH} Hz eliminados)")
+
+# ─────────────────────────────────────────────────────────────────────────────
 # PLOT MA-MA-MASIVO
 # ─────────────────────────────────────────────────────────────────────────────
 
 for idx, (nombre, f_low, f_high) in enumerate(FIGURAS, start=1):
-    print(f"\n  Generando Figura {idx}: {nombre}  ({f_low}–{f_high} Hz)...")
+    print(f"\n    Generando Figura {idx}: {nombre}  ({f_low}–{f_high} Hz)...")
     emg_filt = aplicar_pasabanda(emg_notch, f_low, f_high, FS, ORDEN)
     plot_figura(nombre, emg_filt, dinam_data, t_emg, t_dinam,
                 f_low, f_high, FS, PIE_FIGURA)
 
-print("\nTodas las figuras generadas.")
+print("\n  Todas las figuras EMG/DINAM generadas.")
 plt.show()
