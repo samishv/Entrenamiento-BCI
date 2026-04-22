@@ -1,25 +1,17 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Mar 14 16:37:23 2026
-
-Autor: luiso
-"""
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import butter, iirnotch, sosfiltfilt, tf2sos, welch
 
-plt.close('all')
-
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN
 # ─────────────────────────────────────────────────────────────────────────────
 
-RUTA_NPY  = r"D:\luiso\Documentos\Luis\UPIITA\TT\Coherencia\S18\EEG\S18_260313_EEG_OV_3_MI.npy"
+if "RUTA_NPY" not in globals():
+    RUTA_NPY  = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\S17\EEG\S17_260421_EEG_OV_2_ME.npy"
 
 FS           = 250                  # Frecuencia de muestreo (Hz)
-VENTANA_SEG  = 4.0                  # Resolución Welch: FS/NPERSEG = Hz por barra (500-0.5Hz) (1000-0.25Hz) MAX 125Hz
+VENTANA_SEG  = 1.0                  # Resolución Welch: FS/NPERSEG = Hz por barra (500-0.5Hz) (1000-0.25Hz) MAX 125Hz
 NPERSEG      = int(VENTANA_SEG*FS)
 
 PAD_MUESTRAS = 10 * FS              # Muestras para padding: PAD - 28 segs - PAD
@@ -36,7 +28,7 @@ FIGURAS = [
     # ('Mu μ',            8.0,  13.0),
     # ('Beta β',         13.0,  30.0),
     # ('Gamma γ',        30.0,  45.0),
-    ('Mu + Beta μ+β',   8.0,  30.0),
+    ('μ + β + γ',   8.0,  45.0),
 ]
 
 BANDAS = {
@@ -47,10 +39,7 @@ BANDAS = {
     'γ' : (30,  45,  '#FAFAC4'),
 }
 
-# --- ESTOS COLORES SON PARA VERSION OSCURA
-
-COLORES = [   '#6FC7B7', '#A1DAD1', '#D0EDE8',
-              '#FFFFFF',  '#BFEEF6', '#81DCEE', '#41CCE3']
+COLORES = ['#6FC7B7', '#A1DAD1', '#D0EDE8','#FFFFFF',  '#BFEEF6', '#81DCEE', '#41CCE3']
 
 BG_FIG      = '#0a0a0a'
 BG_AX       = '#0d0d0d'
@@ -58,20 +47,6 @@ COLOR_GRID  = '#404040'
 COLOR_TICK  = '#a5a5a5'
 COLOR_LABEL = '#d1d1d1'
 COLOR_TITLE = '#ffffff'
-
-# --- ESTOS COLORES SON PARA VERSION CLARA
-
-# COLORES = [    '#477e75', '#4b7168', '#4d615f',
-#                '#515051',  '#475e63', '#3d6e74', '#307c8a']
-
-# BG_FIG      = '#f5f5f5'
-# BG_AX       = '#f2f2f2'
-# COLOR_GRID  = '#bfbfbf'
-# COLOR_TICK  = '#5a5a5a'
-# COLOR_LABEL = '#2e2e2e'
-# COLOR_TITLE = '#1e1e1e'
-
-PSD_XLIM   = (0, 45.5)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PARASEO DE LAS FIGURAS
@@ -105,10 +80,25 @@ def parsear_nombre_archivo(ruta):
     return f"Sujeto {num_sujeto}  |  {desc_cond}  |  {desc_estado}"
 
 PIE_FIGURA = parsear_nombre_archivo(RUTA_NPY)
-print(f"\nMetadatos:\n  {PIE_FIGURA}")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PANTALLA COMPLETA
+# CARGADERA DE COSAS
+# ─────────────────────────────────────────────────────────────────────────────
+
+datos = np.load(RUTA_NPY)
+if not (datos.ndim == 2 and datos.shape[0] == 7):
+    raise ValueError(f"Shape inesperado: {datos.shape}. Se esperaba (7, n_muestras).")
+
+n_canales, n_muestras = datos.shape
+tiempo = np.arange(n_muestras) / FS
+
+b_n, a_n   = iirnotch(F_NOTCH, Q_NOTCH, FS)
+sos_notch  = tf2sos(b_n, a_n)
+datos      = np.array([sosfiltfilt(sos_notch, canal) for canal in datos])
+print(f"\n  Filtro Notch aplicado → {F_NOTCH} Hz \n")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FUNCIONES
 # ─────────────────────────────────────────────────────────────────────────────
 
 def pantalla_completa(fig):
@@ -123,27 +113,6 @@ def pantalla_completa(fig):
         fig.set_size_inches(19, 10.5)
     except:
         fig.set_size_inches(19, 10.5)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CARGADERA DE COSAS
-# ─────────────────────────────────────────────────────────────────────────────
-
-datos = np.load(RUTA_NPY)
-if not (datos.ndim == 2 and datos.shape[0] == 7):
-    raise ValueError(f"Shape inesperado: {datos.shape}. Se esperaba (7, n_muestras).")
-
-n_canales, n_muestras = datos.shape
-tiempo = np.arange(n_muestras) / FS
-print(f"\nDatos cargados → {datos.shape}  |  Duración: {n_muestras/FS:.2f} s")
-
-b_n, a_n   = iirnotch(F_NOTCH, Q_NOTCH, FS)
-sos_notch  = tf2sos(b_n, a_n)
-datos      = np.array([sosfiltfilt(sos_notch, canal) for canal in datos])
-print(f"Filtro Notch aplicado → {F_NOTCH} Hz  (Q={Q_NOTCH})\n")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# FUNCIONES
-# ─────────────────────────────────────────────────────────────────────────────
 
 def butter_bandpass_sos(f_low, f_high, fs, order=ORDEN):
     nyq = fs / 2
@@ -163,11 +132,9 @@ def aplicar_filtro_con_padding(datos, f_low, f_high, fs, order=ORDEN, pad=PAD_MU
 
     return resultado
 
-
 def calcular_psd(señal, fs, nperseg):
     freqs, psd = welch(señal, fs=fs, nperseg=nperseg)
     return freqs, psd
-
 
 def estilo_ax(ax):
     ax.set_facecolor(BG_AX)
@@ -175,7 +142,6 @@ def estilo_ax(ax):
     ax.spines[['top', 'right']].set_visible(False)
     ax.spines['left'].set_color('#30363d')
     ax.spines['bottom'].set_color('#30363d')
-
 
 def plot_bandas_psd(ax, psd_max, f_low, f_high, etiquetas=False):
     for nombre, (b_ini, b_fin, bc) in BANDAS.items():
@@ -186,7 +152,6 @@ def plot_bandas_psd(ax, psd_max, f_low, f_high, etiquetas=False):
         if etiquetas:
             ax.text((b_ini + b_fin) / 2, psd_max * 1.02,
                     nombre, color=bc, fontsize=6.5, ha='center', va='bottom')
-
 
 def plot_figura(nombre_fig, datos_filt, f_low, f_high,
                 tiempo, fs, nperseg, colores, canales, pie):
@@ -215,7 +180,7 @@ def plot_figura(nombre_fig, datos_filt, f_low, f_high,
 
         # ── Señal ──────────────────────────────────────────────────────────
         estilo_ax(ax_s)
-        ax_s.plot(tiempo, datos_filt[i], color=color, linewidth=0.7, alpha=0.95)
+        ax_s.plot(tiempo, datos_filt[i], color=color, linewidth=0.75, alpha=0.95)
         ax_s.set_xlim(tiempo[0], tiempo[-1])
         ax_s.set_ylim(y_min_fig - margen_fig, y_max_fig + margen_fig)
         ax_s.set_ylabel(canal, color=color, fontsize=9,
@@ -230,9 +195,6 @@ def plot_figura(nombre_fig, datos_filt, f_low, f_high,
         estilo_ax(ax_p)
                 
         ax_p.plot(freqs, psd, color=color, alpha=0.85, linewidth=1.5)
-        
-        # df = freqs[1] - freqs[0]
-        # ax_p.bar(freqs, psd, width=df * 0.95, color=color, alpha=0.85, linewidth=0)
         
         plot_bandas_psd(ax_p, psd_max, f_low, f_high, etiquetas=(i == 0))
         ax_p.set_xlim(PSD_XLIM)
@@ -266,11 +228,13 @@ def plot_figura(nombre_fig, datos_filt, f_low, f_high,
 # PLOT MA-MA-MASIVO
 # ─────────────────────────────────────────────────────────────────────────────
 
+PSD_XLIM   = (0, 45+8)
+
 for idx, (nombre, f_low, f_high) in enumerate(FIGURAS, start=1):
-    print(f"  Generando Figura {idx}: {nombre}  ({f_low}–{f_high} Hz)...")
+    print(f"    Generando Figura {idx}: {nombre}  ({f_low}–{f_high} Hz)...")
     datos_filt = aplicar_filtro_con_padding(datos, f_low, f_high, FS, ORDEN)
     plot_figura(nombre, datos_filt, f_low, f_high,
                 tiempo, FS, NPERSEG, COLORES, CANALES, PIE_FIGURA)
 
-print("\n Todas las figuras generadas.")
+print("\n  Todas las figuras EEG generadas.\n\n")
 plt.show()
