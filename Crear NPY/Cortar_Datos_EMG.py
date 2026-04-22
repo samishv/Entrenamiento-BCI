@@ -2,10 +2,13 @@ import numpy as np
 import os
 
 # ── Configuración ─────────────────────────────────────────────────────────────
-RUTA_CARPETA = r"D:\luiso\Descargas\S17\S17\EMG"
+BASE_DIR = os.environ.get("CMC_BASE", r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC")
+SUJETO   = os.environ.get("CMC_SUJETO", "S17")
+RUTA_CARPETA = os.path.join(BASE_DIR, SUJETO, "EMG")
+
 FS           = 1000
 SEG_INICIO   = 3
-SEG_UTILES   = 28
+SEG_UTILES   = 15
 
 # ── Cálculo de muestras ───────────────────────────────────────────────────────
 M_INICIO  = FS * SEG_INICIO
