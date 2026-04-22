@@ -1,20 +1,16 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Mar 12 00:46:38 2026
-
-@author: luiso
-"""
-
 import pandas as pd
 import numpy as np
 import os
 
 # ── Configuración ─────────────────────────────────────────────────────────────
-RUTA_CARPETA = r"D:\luiso\Descargas\S17\S17\EEG"
+BASE_DIR = os.environ.get("CMC_BASE", r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC")
+SUJETO   = os.environ.get("CMC_SUJETO", "S17")
+RUTA_CARPETA = os.path.join(BASE_DIR, SUJETO, "EEG")
+
 COLUMNAS     = ['Fz', 'FC3', 'FCz', 'FC4', 'Cz', 'C3', 'C4']
 FS           = 250
 SEG_INICIO   = 3
-SEG_UTILES   = 28
+SEG_UTILES   = 15
 
 # ── Cálculo de muestras ───────────────────────────────────────────────────────
 M_INICIO  = FS * SEG_INICIO
