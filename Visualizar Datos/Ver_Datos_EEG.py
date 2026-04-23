@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import butter, iirnotch, sosfiltfilt, tf2sos, welch
+import pywt
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN
@@ -28,7 +29,8 @@ FIGURAS = [
     # ('Mu μ',            8.0,  13.0),
     # ('Beta β',         13.0,  30.0),
     # ('Gamma γ',        30.0,  45.0),
-    ('μ + β + γ',   8.0,  45.0),
+    # ('μ + β',           8.0,  30.0),
+    ('μ + β + γ',       8.0,  45.0),
 ]
 
 BANDAS = {
@@ -124,6 +126,7 @@ def aplicar_filtro_con_padding(datos, f_low, f_high, fs, order=ORDEN, pad=PAD_MU
     resultado = np.zeros_like(datos)
 
     for i, canal in enumerate(datos):
+        canal = reducir_parpadeo_dwt(canal) 
         inicio_espejo = canal[:pad][::-1]
         fin_espejo    = canal[-pad:][::-1]
         señal_ext     = np.concatenate([inicio_espejo, canal, fin_espejo])
@@ -152,6 +155,11 @@ def plot_bandas_psd(ax, psd_max, f_low, f_high, etiquetas=False):
         if etiquetas:
             ax.text((b_ini + b_fin) / 2, psd_max * 1.02,
                     nombre, color=bc, fontsize=6.5, ha='center', va='bottom')
+            
+def reducir_parpadeo_dwt(senal, wavelet='db4', nivel=5):
+    coefs = pywt.wavedec(senal, wavelet, level=nivel)
+    coefs[1] = np.zeros_like(coefs[1])
+    return pywt.waverec(coefs, wavelet)[:len(senal)]
 
 def plot_figura(nombre_fig, datos_filt, f_low, f_high,
                 tiempo, fs, nperseg, colores, canales, pie):
