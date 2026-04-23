@@ -120,6 +120,10 @@ if MOVIMIENTO == "ME":
             init_globals={"RUTA_EMG": str(emg_path), "RUTA_DINAM": str(dinam_path)}
         )
         
+        print("EEG  :", eeg_path)
+        print("EMG  :", emg_path)
+        print("DINAM:", dinam_path)
+        
         # JUNTOS
         runpy.run_path(
             PLOT_JUNTOS_SCRIPT,
