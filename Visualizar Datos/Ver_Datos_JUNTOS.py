@@ -1,6 +1,8 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import pywt
+from scipy.signal import iirnotch, butter, tf2sos, sosfiltfilt
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN
@@ -15,17 +17,19 @@ if "RUTA_EMG" not in globals():
 if "RUTA_DINAM" not in globals():
     RUTA_DINAM = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\S17\DINAM\S17_260421_DINAM_OV_2_ME.npy"
 
-
-FS_EEG = 250 
+FS_EEG = 250
 FS_EMG = 1000
+ORDEN  = 4
+
+FRECUENCIAS_NOTCH = [19.6, 60, 120, 180, 240, 300]
+Q_NOTCH           = 200.0
 
 CANALES_EEG = ['Fz', 'FC3', 'FCz', 'FC4', 'Cz', 'C3', 'C4']
-MUSCULOS = ["FCU", "ECRL", "ECU"]
+MUSCULOS    = ["FCU", "ECRL", "ECU"]
 
-COLORES_EEG = ['#6FC7B7', '#A1DAD1', '#D0EDE8',
-               '#FFFFFF', '#BFEEF6', '#81DCEE', '#41CCE3'] 
-COLORES_EMG = ["#99b2ff", "#90c7db", "#b0dfa9"]              
-COLOR_DINAM = "#fefb6e"
+COLORES_EEG = ['#ff4783', '#e96396', '#d27fab', '#bb9bc2', '#a4b7d5', '#8dd4ea', '#76f0ff']
+COLORES_EMG = ["#a4f4d7", "#d2fab1", "#ffff89"]
+COLOR_DINAM =  "#ffffff"
 
 BG_FIG      = '#0a0a0a'
 BG_AX       = '#0d0d0d'
@@ -35,7 +39,7 @@ COLOR_LABEL = '#d1d1d1'
 COLOR_TITLE = '#ffffff'
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PARASEO DE LAS FIGURAS
+# PARSEO DE NOMBRE DE ARCHIVO
 # ─────────────────────────────────────────────────────────────────────────────
 
 CONDICION_MAP = {
@@ -44,7 +48,6 @@ CONDICION_MAP = {
     'CK': 'Ojos Cerrados - Movimiento Cinestésico',
     'CV': 'Ojos Cerrados - Movimiento Visual',
 }
-
 ESTADO_MAP = {
     'ME': 'Movimiento Ejecutado',
     'MI': 'Movimiento Imaginado',
@@ -52,18 +55,12 @@ ESTADO_MAP = {
 }
 
 def parsear_nombre_archivo(ruta_eeg):
-    nombre = os.path.splitext(os.path.basename(ruta_eeg))[0]    # 'S17_260310_EEG_CK_3_RE'
-    partes = nombre.split('_')                                  # ['S17','260310','EEG','CK','3','RE']
-
-    sujeto    = partes[0]                                       # 'S17'
-    condicion = partes[3]                                       # 'CK'
-    estado    = partes[5]                                       # 'RE'
-
-    num_sujeto   = sujeto[1:]                                   # '17'
-    desc_cond    = CONDICION_MAP.get(condicion, condicion)
-    desc_estado  = ESTADO_MAP.get(estado, estado)
-
-    return f"Sujeto {num_sujeto}  |  {desc_cond}  |  {desc_estado}"
+    nombre = os.path.splitext(os.path.basename(ruta_eeg))[0]
+    partes = nombre.split('_')
+    sujeto, condicion, estado = partes[0], partes[3], partes[5]
+    return (f"Sujeto {sujeto[1:]}  |  "
+            f"{CONDICION_MAP.get(condicion, condicion)}  |  "
+            f"{ESTADO_MAP.get(estado, estado)}")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CARGADERA DE COSAS
@@ -74,17 +71,67 @@ def cargar_npy(ruta, nombre):
         raise FileNotFoundError(f"No se encontró {nombre}: {ruta}")
     return np.load(ruta)
 
-eeg = cargar_npy(RUTA_EEG, "EEG")
-emg = cargar_npy(RUTA_EMG, "EMG")
+eeg   = cargar_npy(RUTA_EEG,   "EEG")
+emg   = cargar_npy(RUTA_EMG,   "EMG")
 dinam = cargar_npy(RUTA_DINAM, "DINAM")
 
-t_eeg = np.arange(eeg.shape[1]) / FS_EEG
-t_emg = np.arange(emg.shape[1]) / FS_EMG
+t_eeg = np.arange(eeg.shape[1])  / FS_EEG
+t_emg = np.arange(emg.shape[1])  / FS_EMG
+t_din = np.linspace(0, emg.shape[1] / FS_EMG, dinam.shape[0])
+tmax  = min(t_eeg[-1], t_emg[-1], t_din[-1])
 
-dur_emg = emg.shape[1] / FS_EMG
-t_din = np.linspace(0, dur_emg, dinam.shape[0])
+# ─────────────────────────────────────────────────────────────────────────────
+# PROCESAMIENTO EEG
+#   Etapa 1 — Reducción de artefactos de parpadeo con DWT (db4, nivel 5)
+#   Etapa 2 — Filtro pasa banda Butterworth 4° orden  8–45 Hz
+# ─────────────────────────────────────────────────────────────────────────────
 
-tmax = min(t_eeg[-1], t_emg[-1], t_din[-1])
+def reducir_parpadeo_dwt(senal, wavelet='db4', nivel=5):
+    """Elimina el detalle de nivel 5 (artefactos de parpadeo) y reconstruye."""
+    coefs = pywt.wavedec(senal, wavelet, level=nivel)
+    coefs[1] = np.zeros_like(coefs[1])          # detalle nivel 5 → cero
+    return pywt.waverec(coefs, wavelet)[:len(senal)]
+
+def procesar_eeg(eeg_raw, fs, orden=ORDEN):
+    sos_bp = butter(orden, [8.0, 45.0], btype='bandpass', fs=fs, output='sos')
+    out = np.zeros_like(eeg_raw, dtype=np.float64)
+    for ch in range(eeg_raw.shape[0]):
+        sin_parpadeo = reducir_parpadeo_dwt(eeg_raw[ch].astype(np.float64))
+        out[ch]      = sosfiltfilt(sos_bp, sin_parpadeo)
+    return out
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PROCESAMIENTO EMG
+#   Etapa 1 — Filtros Notch en cascada
+#   Etapa 2 — Filtro pasa banda Butterworth 4° orden  10–450 Hz
+#   Etapa 3 — Rectificación (valor absoluto)
+#   Etapa 4 — Envolvente: filtro pasa bajas Butterworth 2° orden  4 Hz
+# ─────────────────────────────────────────────────────────────────────────────
+
+def procesar_emg(emg_raw, fs, freqs_notch=FRECUENCIAS_NOTCH, q=Q_NOTCH, orden=ORDEN):
+    sos_bp  = butter(orden, [20.0, 150.0], btype='bandpass', fs=fs, output='sos')
+    sos_lp  = butter(orden-2, 4.0,          btype='low',      fs=fs, output='sos')
+    out = np.zeros_like(emg_raw, dtype=np.float64)
+    for ch in range(emg_raw.shape[0]):
+        senal = emg_raw[ch].astype(np.float64)
+        # Notch
+        for f in freqs_notch:
+            if 0 < f < fs / 2:
+                b, a  = iirnotch(f, q, fs=fs)
+                senal = sosfiltfilt(tf2sos(b, a), senal)
+        # Pasa banda → rectificación → envolvente
+        senal   = sosfiltfilt(sos_bp, senal)
+        senal   = np.abs(senal)
+        out[ch] = sosfiltfilt(sos_lp, senal)
+    return out
+
+print("\n  Procesando señales EEG...")
+eeg_proc = procesar_eeg(eeg, FS_EEG)
+
+print("  Procesando señales EMG...")
+emg_proc = procesar_emg(emg, FS_EMG)
+
+print("\n  Procesamiento completado.")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FUNCIONES
@@ -93,23 +140,13 @@ tmax = min(t_eeg[-1], t_emg[-1], t_din[-1])
 def pantalla_completa(fig):
     try:
         manager = fig.canvas.manager
-        try:
-            manager.window.state('zoomed')
-            return
-        except Exception:
-            pass
-        try:
-            manager.window.showMaximized()
-            return
-        except Exception:
-            pass
-        try:
-            manager.frame.Maximize(True)
-            return
-        except Exception:
-            pass
+        for metodo in ['manager.window.state("zoomed")',
+                        'manager.window.showMaximized()',
+                        'manager.frame.Maximize(True)']:
+            try:    eval(metodo); return
+            except: pass
         fig.set_size_inches(19, 10.5)
-    except Exception:
+    except:
         fig.set_size_inches(19, 10.5)
 
 def estilo_ax(ax):
@@ -124,43 +161,45 @@ def estilo_ax(ax):
 # PLOT MA-MA-MASIVO
 # ─────────────────────────────────────────────────────────────────────────────
 
-fig, axes = plt.subplots(11, 1, sharex=True)
+eeg_ymin = np.min(eeg_proc) * 1.1
+eeg_ymax = np.max(eeg_proc) * 1.1
+emg_ylim = np.max(np.abs(emg_proc)) * 1.1
+
+fig, axes = plt.subplots(10, 1, sharex=True)
 fig.patch.set_facecolor(BG_FIG)
 fig.subplots_adjust(left=0.06, right=0.99, top=0.93, bottom=0.06, hspace=0.08)
 
-# ── Pie de figura ──────────────────────────────────────────────────────
+fig.suptitle("EEG · EMG — Señales Procesadas",
+             color=COLOR_TITLE, fontsize=11, fontweight='bold')
 fig.text(0.5, 0.005, parsear_nombre_archivo(RUTA_EEG),
          ha='center', va='bottom',
-         fontsize=8, color= COLOR_LABEL,
-         style='italic', fontweight='bold')
+         fontsize=8, color=COLOR_LABEL, style='italic', fontweight='bold')
 
-fig.suptitle("VEMOS QUE TITULO LE PONGO", color=COLOR_TITLE, fontsize=11, fontweight='bold')
-
-# EEG (7)
+# EEG (canales 0–6)
 for i in range(7):
     ax = axes[i]
     estilo_ax(ax)
-    ax.plot(t_eeg, eeg[i], color=COLORES_EEG[i], linewidth=0.75)
-    etiqueta = CANALES_EEG[i] if i < len(CANALES_EEG) else f"EEG{i+1}"
-    ax.set_ylabel(etiqueta, color=COLOR_LABEL, fontsize=8)
+    ax.plot(t_eeg, eeg_proc[i], color=COLORES_EEG[i], linewidth=0.75)
+    ax.set_ylabel(CANALES_EEG[i], color=COLOR_LABEL, fontsize=8)
     ax.set_xlim(0, tmax)
+    ax.set_ylim(eeg_ymin, eeg_ymax)
 
-# EMG (3) 
-for j in range(min(3, emg.shape[0])):
+# EMG (canales 0–2, filas 7–9)
+for j in range(min(3, emg_proc.shape[0])):
     ax = axes[7 + j]
     estilo_ax(ax)
-    color = COLORES_EMG[j] if j < len(COLORES_EMG) else "#99b2ff"
-    ax.plot(t_emg, emg[j], color=color, linewidth=0.75)
-    etiqueta = MUSCULOS[j] if j < len(MUSCULOS) else f"EMG{j+1}"
-    ax.set_ylabel(etiqueta, color=COLOR_LABEL, fontsize=8)
+    ax.plot(t_emg, emg_proc[j], color=COLORES_EMG[j] if j < len(COLORES_EMG) else "#99b2ff", linewidth=1.5)
+    ax.set_ylabel(MUSCULOS[j] if j < len(MUSCULOS) else f"EMG{j+1}", color=COLOR_LABEL, fontsize=8)
     ax.set_xlim(0, tmax)
+    ax.set_ylim(0, emg_ylim)
 
-# DINAM (1)
-ax = axes[10]
-estilo_ax(ax)
-ax.plot(t_din, dinam, color=COLOR_DINAM, linewidth=1.5)
-ax.set_ylabel("DINAM", color=COLOR_LABEL, fontsize=8)
-ax.set_xlabel("Tiempo (s)", color=COLOR_LABEL, fontsize=9)
+# # Dinamómetro (fila 10, sin procesamiento)
+# ax = axes[10]
+# estilo_ax(ax)
+# ax.plot(t_din, dinam, color=COLOR_DINAM, linewidth=1.5)
+# ax.set_ylabel("DINAM", color=COLOR_LABEL, fontsize=8)
+
+ax.set_xlabel("Tiempo [s]", color=COLOR_LABEL, fontsize=8)
 ax.set_xlim(0, tmax)
 
 pantalla_completa(fig)
