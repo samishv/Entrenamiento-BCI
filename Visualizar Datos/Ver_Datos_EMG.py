@@ -37,7 +37,7 @@ COLOR_LABEL = '#d1d1d1'
 COLOR_TITLE = '#ffffff'
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PARASEO DE LAS FIGURAS
+# PARSEO DE NOMBRE DE ARCHIVO
 # ─────────────────────────────────────────────────────────────────────────────
 
 CONDICION_MAP = {
@@ -234,5 +234,5 @@ for idx, (nombre, f_low, f_high) in enumerate(FIGURAS, start=1):
     plot_figura(nombre, emg_filt, dinam_data, t_emg, t_dinam,
                 f_low, f_high, FS, PIE_FIGURA)
 
-print("\n  Todas las figuras EMG/DINAM generadas.")
+print("\n  Todas las figuras EMG/DINAM generadas.\n\n")
 plt.show()
