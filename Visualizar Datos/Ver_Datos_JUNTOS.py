@@ -110,26 +110,26 @@ def procesar_eeg(eeg_raw, fs, orden=ORDEN):
 
 def procesar_emg(emg_raw, fs, freqs_notch=FRECUENCIAS_NOTCH, q=Q_NOTCH, orden=ORDEN):
     sos_bp  = butter(orden, [20.0, 150.0], btype='bandpass', fs=fs, output='sos')
-    sos_lp  = butter(orden-2, 4.0,          btype='low',      fs=fs, output='sos')
-    out = np.zeros_like(emg_raw, dtype=np.float64)
+    sos_lp  = butter(orden-2, 3.0,         btype='low',      fs=fs, output='sos')
+    env = np.zeros_like(emg_raw, dtype=np.float64)
+    rect = np.zeros_like(emg_raw, dtype=np.float64)
     for ch in range(emg_raw.shape[0]):
         senal = emg_raw[ch].astype(np.float64)
-        # Notch
         for f in freqs_notch:
             if 0 < f < fs / 2:
                 b, a  = iirnotch(f, q, fs=fs)
                 senal = sosfiltfilt(tf2sos(b, a), senal)
-        # Pasa banda → rectificación → envolvente
-        senal   = sosfiltfilt(sos_bp, senal)
-        senal   = np.abs(senal)
-        out[ch] = sosfiltfilt(sos_lp, senal)
-    return out
+        senal      = sosfiltfilt(sos_bp, senal)
+        senal      = np.abs(senal)
+        rect[ch]   = senal                     
+        env[ch]    = sosfiltfilt(sos_lp, senal)
+    return env, rect      
 
 print("\n  Procesando señales EEG...")
 eeg_proc = procesar_eeg(eeg, FS_EEG)
 
 print("  Procesando señales EMG...")
-emg_proc = procesar_emg(emg, FS_EMG)
+emg_proc, emg_rect = procesar_emg(emg, FS_EMG)
 
 print("\n  Procesamiento completado.")
 
@@ -148,6 +148,12 @@ def pantalla_completa(fig):
         fig.set_size_inches(19, 10.5)
     except:
         fig.set_size_inches(19, 10.5)
+        
+def nombre_salida(ruta, sufijo):
+    CARPETA_IMGS = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\IMGS"
+    os.makedirs(CARPETA_IMGS, exist_ok=True)          # la crea si no existe
+    nombre = os.path.splitext(os.path.basename(ruta))[0]
+    return os.path.join(CARPETA_IMGS, f"{nombre}_{sufijo}.svg")
 
 def estilo_ax(ax):
     ax.set_facecolor(BG_AX)
@@ -163,7 +169,7 @@ def estilo_ax(ax):
 
 eeg_ymin = np.min(eeg_proc) * 1.1
 eeg_ymax = np.max(eeg_proc) * 1.1
-emg_ylim = np.max(np.abs(emg_proc)) * 1.1
+emg_ylim = np.max(np.abs(emg_rect)) * 1.1
 
 fig, axes = plt.subplots(10, 1, sharex=True)
 fig.patch.set_facecolor(BG_FIG)
@@ -188,7 +194,10 @@ for i in range(7):
 for j in range(min(3, emg_proc.shape[0])):
     ax = axes[7 + j]
     estilo_ax(ax)
-    ax.plot(t_emg, emg_proc[j], color=COLORES_EMG[j] if j < len(COLORES_EMG) else "#99b2ff", linewidth=1.5)
+    ax.plot(t_emg, emg_rect[j], color='#d7d7d7',
+            linewidth=0.5, alpha=0.5)                          # señal rectificada
+    ax.plot(t_emg, emg_proc[j], color=COLORES_EMG[j] if j < len(COLORES_EMG) else "#99b2ff",
+            linewidth=1.5)                                      # envolvente
     ax.set_ylabel(MUSCULOS[j] if j < len(MUSCULOS) else f"EMG{j+1}", color=COLOR_LABEL, fontsize=8)
     ax.set_xlim(0, tmax)
     ax.set_ylim(0, emg_ylim)
@@ -202,5 +211,13 @@ for j in range(min(3, emg_proc.shape[0])):
 ax.set_xlabel("Tiempo [s]", color=COLOR_LABEL, fontsize=8)
 ax.set_xlim(0, tmax)
 
+fig.set_size_inches(19, 10.5) 
+
+ruta_svg = nombre_salida(RUTA_DINAM, "JUNTOS")
+fig.savefig(ruta_svg, format='svg', bbox_inches='tight',
+            facecolor=fig.get_facecolor())
+print(f"\n  Figura guardada en: {ruta_svg}")
+
 pantalla_completa(fig)
+
 plt.show()
