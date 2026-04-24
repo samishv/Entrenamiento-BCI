@@ -9,8 +9,8 @@ RUTA_CARPETA = os.path.join(BASE_DIR, SUJETO, "EEG")
 
 COLUMNAS     = ['Fz', 'FC3', 'FCz', 'FC4', 'Cz', 'C3', 'C4']
 FS           = 250
-SEG_INICIO   = 3
-SEG_UTILES   = 15
+SEG_INICIO = int(os.environ.get("CMC_SEG_INICIO", 5))
+SEG_UTILES = int(os.environ.get("CMC_SEG_UTILES", 10))
 
 # ── Cálculo de muestras ───────────────────────────────────────────────────────
 M_INICIO  = FS * SEG_INICIO
