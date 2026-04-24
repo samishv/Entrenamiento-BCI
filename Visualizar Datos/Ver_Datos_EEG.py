@@ -15,7 +15,7 @@ FS           = 250                  # Frecuencia de muestreo (Hz)
 VENTANA_SEG  = 1.0                  # Resolución Welch: FS/NPERSEG = Hz por barra (500-0.5Hz) (1000-0.25Hz) MAX 125Hz
 NPERSEG      = int(VENTANA_SEG*FS)
 
-PAD_MUESTRAS = 10 * FS              # Muestras para padding: PAD - 28 segs - PAD
+PAD_MUESTRAS = 1 * FS               # Muestras para padding: PAD - 28 segs - PAD
 ORDEN        = 4                    # Orden filtro Butterworth
 F_NOTCH      = 60.0                 # Frecuencia del filtro notch (Hz)
 Q_NOTCH      = 30                   # Factor de calidad del notch
@@ -120,6 +120,11 @@ def butter_bandpass_sos(f_low, f_high, fs, order=ORDEN):
     nyq = fs / 2
     return butter(order, [f_low / nyq, f_high / nyq], btype='band', output='sos')
 
+def nombre_salida(ruta, sufijo):
+    CARPETA_IMGS = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\IMGS"
+    os.makedirs(CARPETA_IMGS, exist_ok=True)          # la crea si no existe
+    nombre = os.path.splitext(os.path.basename(ruta))[0]
+    return os.path.join(CARPETA_IMGS, f"{nombre}_{sufijo}.svg")
 
 def aplicar_filtro_con_padding(datos, f_low, f_high, fs, order=ORDEN, pad=PAD_MUESTRAS):
     sos = butter_bandpass_sos(f_low, f_high, fs, order)
@@ -228,8 +233,16 @@ def plot_figura(nombre_fig, datos_filt, f_low, f_high,
              ha='center', va='bottom',
              fontsize=8, color= COLOR_LABEL,
              style='italic', fontweight='bold')
-
+    
+    fig.set_size_inches(19, 10.5)     
+    
+    ruta_svg = nombre_salida(RUTA_NPY, "EEG")
+    fig.savefig(ruta_svg, format='svg', bbox_inches='tight',
+                facecolor=fig.get_facecolor())
+    print(f"\n  Figura guardada en: {ruta_svg}")
+    
     pantalla_completa(fig)
+    
     return fig
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -245,4 +258,5 @@ for idx, (nombre, f_low, f_high) in enumerate(FIGURAS, start=1):
                 tiempo, FS, NPERSEG, COLORES, CANALES, PIE_FIGURA)
 
 print("\n  Todas las figuras EEG generadas.\n\n")
+
 plt.show()
