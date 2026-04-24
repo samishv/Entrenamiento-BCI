@@ -7,8 +7,8 @@ BASE_DIR = os.environ.get("CMC_BASE", r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC")
 SUJETO   = os.environ.get("CMC_SUJETO", "S17")
 RUTA_CARPETA = os.path.join(BASE_DIR, SUJETO, "DINAM")
 
-T_INICIO     = 3
-T_FIN        = T_INICIO + 15
+T_INICIO = int(os.environ.get("CMC_SEG_INICIO", 5))
+T_FIN    = T_INICIO + int(os.environ.get("CMC_SEG_UTILES", 10))
 
 # ── Procesamiento ─────────────────────────────────────────────────────────────
 archivos_csv = [f for f in os.listdir(RUTA_CARPETA) if f.endswith('.csv')]
