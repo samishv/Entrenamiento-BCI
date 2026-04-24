@@ -4,9 +4,11 @@ from pathlib import Path
 
 # ====== CONFIGURAME ESTA ======
 
-BASE_DIR = Path(r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC")
-SUJETO   = "S18"           
-EJECUTAR = ["EEG", "EMG", "DINAM"]
+BASE_DIR    = Path(r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC")
+SUJETO      = "S7"
+SEG_INICIO  = 5  
+SEG_UTILES  = 10    
+EJECUTAR    = ["EEG", "EMG", "DINAM"]
 
 SCRIPTS = {
     "EEG":  "Cortar_Datos_EEG.py",
@@ -25,8 +27,10 @@ def validar_estructura(base: Path, sujeto: str):
 for modo in EJECUTAR:
     validar_estructura(BASE_DIR, SUJETO)
 
-    os.environ["CMC_BASE"] = str(BASE_DIR)
-    os.environ["CMC_SUJETO"] = SUJETO
+    os.environ["CMC_BASE"]       = str(BASE_DIR)
+    os.environ["CMC_SUJETO"]     = SUJETO
+    os.environ["CMC_SEG_INICIO"] = str(SEG_INICIO)
+    os.environ["CMC_SEG_UTILES"] = str(SEG_UTILES)
 
     script = SCRIPTS[modo]
     print(f"\n=== Ejecutando {modo} para {SUJETO} ===")
