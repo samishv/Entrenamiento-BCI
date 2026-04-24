@@ -116,6 +116,12 @@ def pantalla_completa(fig):
         fig.set_size_inches(19, 10.5)
     except:
         fig.set_size_inches(19, 10.5)
+        
+def nombre_salida(ruta, sufijo):
+    CARPETA_IMGS = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\IMGS"
+    os.makedirs(CARPETA_IMGS, exist_ok=True)          # la crea si no existe
+    nombre = os.path.splitext(os.path.basename(ruta))[0]
+    return os.path.join(CARPETA_IMGS, f"{nombre}_{sufijo}.svg")
 
 def aplicar_pasabanda(emg, f_low, f_high, fs, orden):
     sos      = butter(orden, [f_low, f_high], btype='bandpass', fs=fs, output='sos')
@@ -205,7 +211,15 @@ def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
     fig.text(0.5, 0.005, pie, ha='center', va='bottom',
              fontsize=8, color=COLOR_LABEL, style='italic', fontweight='bold')
 
+    fig.set_size_inches(19, 10.5)     
+    
+    ruta_svg = nombre_salida(RUTA_EMG, "EMG")
+    fig.savefig(ruta_svg, format='svg', bbox_inches='tight',
+                facecolor=fig.get_facecolor())
+    print(f"\n  Figura guardada en: {ruta_svg}")
+    
     pantalla_completa(fig)
+    
     return fig
 
 # ─────────────────────────────────────────────────────────────────────────────
