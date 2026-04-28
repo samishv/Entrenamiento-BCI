@@ -10,10 +10,14 @@ fs = 250
 level = 6
 wavelet_mom = 'db4'
 
-FACTORES = [2.0, 0.5, 0.1, 0.25, 0.1, 2.0]
+ruta = r"D:\luiso\Descargas\RegistrosCMC\RegistrosCMC\S5\EEG\S5_260323_EEG_OV_1_ME.npy"
+FACTORES = [0.0, 0.0, 0.0, 0.0, 2.0, 2.0]
 #          [ D6,  D5,  D4,  D3,  D2,  D1]
 
-ruta = r"D:\luiso\Descargas\RegistrosCMC\RegistrosCMC\S5\EEG\S5_260323_EEG_CK_1_MI.npy"
+# ruta = r"D:\luiso\Descargas\RegistrosCMC\RegistrosCMC\S5\EEG\S5_260323_EEG_CK_1_MI.npy"
+# FACTORES = [2.0, 0.5, 0.1, 0.25, 0.1, 2.0]
+#          [ D6,  D5,  D4,  D3,  D2,  D1]
+
 signal = np.load(ruta)
 signal = signal[:250*28][0]
 
