@@ -5,6 +5,7 @@ import pygame
 from scripts.utils import load_images, Animation
 from scripts.entities import Player
 from scripts.tilemap import Tilemap
+from menu import MainMenu
 
 class Game:
     def __init__(self):
@@ -255,6 +256,8 @@ class Game:
             self.bitmap_font_big[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_big, h * self.bitmap_scale_big))
             self.bitmap_font_mid[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_mid, h * self.bitmap_scale_mid))
             self.bitmap_font_chibi[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_chibi, h * self.bitmap_scale_chibi))
+
+        self.curr_menu = MainMenu(self)
         
     def load_numbered_bitmap_font(self, folder, charset, start_index=1):
         font = {}
@@ -446,6 +449,7 @@ class Game:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                    self.curr_menu.run_display = False
 
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_F11:
