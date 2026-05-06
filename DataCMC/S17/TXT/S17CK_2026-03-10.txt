@@ -1,8 +1,0 @@
-Participante 17CK
-Fecha: 2026-03-10 19:47:55
-
-Orden de condiciones:
-1: ME
-2: MI
-3: Reposo
-4: ME
