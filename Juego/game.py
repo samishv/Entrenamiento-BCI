@@ -10,6 +10,7 @@ from menu import MainMenu
 class Game:
     def __init__(self):
         pygame.init()
+        self.running, self.playing = True, False
         pygame.display.set_caption("juego v1_v11")
 
         self.base_size = (480, 270)
@@ -234,6 +235,7 @@ class Game:
         self.bitmap_charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@_,.;: "
         self.bitmap_font = self.load_numbered_bitmap_font("data/fonts", self.bitmap_charset, start_index=1)
         self.bitmap_spacing = 1
+        self.bitmap_font_white = self.recolor_bitmap_font(self.bitmap_font, (255, 255, 255))
         
         # ===== VALIDAR GAMER TAG =====
         self.gamer_tag_alpha = 0
@@ -251,12 +253,20 @@ class Game:
         self.bitmap_font_big = {}
         self.bitmap_font_mid = {}
         self.bitmap_font_chibi = {}
+        self.bitmap_font_big_white = {}
+        self.bitmap_font_mid_white = {}
+        self.bitmap_font_chibi_white = {}
         for ch, img in self.bitmap_font.items():
             w, h = img.get_size()
             self.bitmap_font_big[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_big, h * self.bitmap_scale_big))
             self.bitmap_font_mid[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_mid, h * self.bitmap_scale_mid))
             self.bitmap_font_chibi[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_chibi, h * self.bitmap_scale_chibi))
 
+        for ch, img in self.bitmap_font_white.items():
+            w, h = img.get_size()
+            self.bitmap_font_big_white[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_big, h * self.bitmap_scale_big))
+            self.bitmap_font_mid_white[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_mid, h * self.bitmap_scale_mid))
+            self.bitmap_font_chibi_white[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_chibi, h * self.bitmap_scale_chibi))
         self.curr_menu = MainMenu(self)
         
     def load_numbered_bitmap_font(self, folder, charset, start_index=1):
@@ -340,7 +350,31 @@ class Game:
             y_off = baseline - rect_bottom
             surface.blit(img, (cx, y + y_off))
             cx += img.get_width() + spacing
-                
+    
+        
+    def recolor_bitmap_font(self, font, color=(255, 255, 255), bg_colorkey=None):
+        """
+        Convierte cada glyph a una máscara y lo reconstruye con el color deseado.
+        - Funciona perfecto si el fondo es transparente (alpha) o si defines colorkey.
+        - bg_colorkey: si tus imágenes NO tienen transparencia, pon aquí el color del fondo a eliminar.
+        """
+        new_font = {}
+        for ch, glyph in font.items():
+            g = glyph.convert_alpha()
+
+            # Si tus PNGs no tienen alpha y el fondo es un color sólido, usa colorkey
+            if bg_colorkey is not None:
+                g.set_colorkey(bg_colorkey)
+
+            # Crear máscara desde la forma visible del glyph (alpha/colorkey)
+            mask = pygame.mask.from_surface(g)
+
+            # Reconstruir Surface: píxeles del glyph con el color, resto transparente
+            colored = mask.to_surface(setcolor=(*color, 255), unsetcolor=(0, 0, 0, 0))
+            new_font[ch] = colored.convert_alpha()
+
+        return new_font
+            
     def _approach_alpha(self, alpha, target, duration, dt):
         if duration <= 0:
             return target
@@ -949,6 +983,35 @@ class Game:
             pygame.display.update()
 
             self.clock.tick(60)
+
+    
+    def check_events(self):
+        self.DOWN_KEY = False
+        self.UP_KEY = False
+        self.START_KEY = False
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running, self.playing = False, False
+                self.curr_menu.run_display = False
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_DOWN:
+                    self.DOWN_KEY = True
+                if event.key == pygame.K_UP:
+                    self.UP_KEY = True
+                if event.key == pygame.K_RETURN:
+                    self.START_KEY = True
+    
+    
+    def reset_keys(self):
+        self.DOWN_KEY = False
+        self.UP_KEY = False
+        self.START_KEY = False
+
+
 
 if __name__ == "__main__":
     Game().run()

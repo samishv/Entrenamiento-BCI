@@ -1,68 +1,84 @@
+
 import pygame
 
 class Menu:
-    def __init__(self,game):
+    def __init__(self, game):
         self.game = game
-        self.mid_w, self.mid_h = self.game.screen.get_rect().center
-        self.run_display = True  # Variable para controlar la ejecución del menú
-        self.cursor_rect = pygame.Rect(0, 0, 20, 20)
-        self.offset = -100 # Offset para posicionar el cursor a la izquierda del texto
+        self.run_display = True
+        self.state = None  # lo define cada menú
 
-
-    def draw_cursor(self):
-        cursor = self.game.render_bitmap_text_surface("*", self.bitmap_font, spacing=self.bitmap_spacing)
-        self.game.screen.blit(cursor, (self.cursor_rect.x, self.cursor_rect.y))
+    def draw_cursor(self, option_rect):
+        cursor = self.game.render_bitmap_text_surface(
+            ".", self.game.bitmap_font_big_white, spacing=self.game.bitmap_spacing
+        )
+        # cursor a la izquierda de la opción seleccionada
+        cursor_rect = cursor.get_rect(midright=(option_rect.left - 10, option_rect.centery))
+        self.game.display.blit(cursor, cursor_rect)
 
     def blit_screen(self):
-        self.game.screen.blit(self.game.display, (0, 0))
+        self.game.screen.fill((0, 0, 0))
+        scaled = pygame.transform.scale(self.game.display, self.game.blit_size)
+        self.game.screen.blit(scaled, self.game.blit_offset)
         pygame.display.update()
         self.game.reset_keys()
+        self.game.clock.tick(60)
+
 
 class MainMenu(Menu):
     def __init__(self, game):
-        Menu.__init__(self,game)
+        super().__init__(game)
         self.state = "Start"
-        self.startx, self.starty = self.mid_w, self.mid_h + 30
-        self.optionsx, self.optionsy = self.mid_w, self.mid_h + 60
-        self.cursor_rect.midtop = (self.startx + self.offset, self.starty)
 
     def display_menu(self):
         self.run_display = True
+
         while self.run_display:
-            self.game.display.fill((0, 0, 0))  # Limpiar la pantalla
-            mm=self.game.render_bitmap_text("Main Menu", self.mid_w, self.mid_h - 30, spacing=10)
-            sg=self.game.render_bitmap_text("Start Game", self.startx, self.starty, spacing=10)
-            op=self.game.render_bitmap_text("Options", self.optionsx, self.optionsy, spacing=10)
-            self.game.screen.blit(mm, (self.mid_w, self.mid_h - 30))
-            self.game.screen.blit(sg, (self.startx, self.starty))
-            self.game.screen.blit(op, (self.optionsx, self.optionsy))
-            self.draw_cursor()
             self.game.check_events()
             self.check_input()
+
+            # --- dibujar en DISPLAY (480x270) ---
+            self.game.display.fill((0, 0, 0))
+            mid_w, mid_h = self.game.display.get_rect().center
+
+            mm = self.game.render_bitmap_text_surface(
+                "MAIN MENU", self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
+            )
+            sg = self.game.render_bitmap_text_surface(
+                "Start Game", self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
+            )
+            op = self.game.render_bitmap_text_surface(
+                "Options", self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
+            )
+
+            mm_rect = mm.get_rect(center=(mid_w, mid_h - 60))
+            sg_rect = sg.get_rect(center=(mid_w, mid_h + 10))
+            op_rect = op.get_rect(center=(mid_w, mid_h + 40))
+
+            self.game.display.blit(mm, mm_rect)
+            self.game.display.blit(sg, sg_rect)
+            self.game.display.blit(op, op_rect)
+
+            # --- cursor según estado ---
+            if self.state == "Start":
+                self.draw_cursor(sg_rect)
+            else:
+                self.draw_cursor(op_rect)
+
+            # --- mostrar en pantalla ---
             self.blit_screen()
-            
+
     def move_cursor(self):
         if self.game.DOWN_KEY:
-            if self.state == "Start":
-                self.cursor_rect.midtop = (self.optionsx + self.offset, self.optionsy)
-                self.state = "Options"
-            elif self.state == "Options":
-                self.cursor_rect.midtop = (self.startx + self.offset, self.starty)
-                self.state = "Start"
-        elif self.game.UP_KEY:
-            if self.state == "Start":
-                self.cursor_rect.midtop = (self.optionsx + self.offset, self.optionsy)
-                self.state = "Options"
-            elif self.state == "Options":
-                self.cursor_rect.midtop = (self.startx + self.offset, self.starty)
-                self.state = "Start"
+            self.state = "Options" if self.state == "Start" else "Start"
+        if self.game.UP_KEY:
+            self.state = "Options" if self.state == "Start" else "Start"
 
     def check_input(self):
         self.move_cursor()
+
         if self.game.START_KEY:
             if self.state == "Start":
-                print("Start Game selected")
-                # Aquí puedes agregar la lógica para iniciar el juego
+                self.game.playing = True
+                self.run_display = False  # salir del menú
             elif self.state == "Options":
-                print("Options selected")
-                # Aquí puedes agregar la lógica para mostrar las opciones del juego 
+                print("Options selected (pendiente)")

@@ -2,7 +2,7 @@ from game import Game
 
 g = Game()
 
-while g.RUNNING:
+while g.running:
     g.curr_menu.display_menu()
-    g.new()
-    g.run() 
+    #g.new()
+    #g.run() 
