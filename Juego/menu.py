@@ -24,61 +24,166 @@ class Menu:
         self.game.clock.tick(60)
 
 
+
 class MainMenu(Menu):
     def __init__(self, game):
         super().__init__(game)
-        self.state = "Start"
+        self.options = ["Niveles", "Configuracion"]
+        self.index = 0
 
     def display_menu(self):
         self.run_display = True
-
         while self.run_display:
             self.game.check_events()
             self.check_input()
 
-            # --- dibujar en DISPLAY (480x270) ---
             self.game.display.fill((0, 0, 0))
             mid_w, mid_h = self.game.display.get_rect().center
 
-            mm = self.game.render_bitmap_text_surface(
-                "MAIN MENU", self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
+            title = self.game.render_bitmap_text_surface(
+                "Main Menu", self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
             )
-            sg = self.game.render_bitmap_text_surface(
-                "Start Game", self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
-            )
-            op = self.game.render_bitmap_text_surface(
-                "Options", self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
-            )
+            title_rect = title.get_rect(center=(mid_w, mid_h - 70))
+            self.game.display.blit(title, title_rect)
 
-            mm_rect = mm.get_rect(center=(mid_w, mid_h - 60))
-            sg_rect = sg.get_rect(center=(mid_w, mid_h + 10))
-            op_rect = op.get_rect(center=(mid_w, mid_h + 40))
+            rects = []
+            for i, text in enumerate(self.options):
+                surf = self.game.render_bitmap_text_surface(
+                    text, self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
+                )
+                rect = surf.get_rect(center=(mid_w, mid_h + i * 30))
+                self.game.display.blit(surf, rect)
+                rects.append(rect)
 
-            self.game.display.blit(mm, mm_rect)
-            self.game.display.blit(sg, sg_rect)
-            self.game.display.blit(op, op_rect)
-
-            # --- cursor según estado ---
-            if self.state == "Start":
-                self.draw_cursor(sg_rect)
-            else:
-                self.draw_cursor(op_rect)
-
-            # --- mostrar en pantalla ---
+            self.draw_cursor(rects[self.index])
             self.blit_screen()
 
-    def move_cursor(self):
-        if self.game.DOWN_KEY:
-            self.state = "Options" if self.state == "Start" else "Start"
-        if self.game.UP_KEY:
-            self.state = "Options" if self.state == "Start" else "Start"
-
     def check_input(self):
-        self.move_cursor()
+        if self.game.DOWN_KEY:
+            self.index = (self.index + 1) % len(self.options)
+        if self.game.UP_KEY:
+            self.index = (self.index - 1) % len(self.options)
 
         if self.game.START_KEY:
-            if self.state == "Start":
+            choice = self.options[self.index]
+
+            if choice == "Niveles":
+                self.game.curr_menu = self.game.levels_menu
+                self.run_display = False
+
+            elif choice == "Configuracion":
+                self.game.curr_menu = self.game.config_menu
+                self.run_display = False
+
+
+
+class ConfigMenu(Menu):
+    def __init__(self, game):
+        super().__init__(game)
+        self.state = "Volver"   # o lo que quieras como primera opción
+
+    def display_menu(self):
+        self.run_display = True
+        while self.run_display:
+            self.game.check_events()
+            self.check_input()
+
+            self.game.display.fill((0, 0, 0))
+            mid_w, mid_h = self.game.display.get_rect().center
+
+            title = self.game.render_bitmap_text_surface(
+                "Configuracion", self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
+            )
+            volver = self.game.render_bitmap_text_surface(
+                "Volver", self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
+            )
+
+            title_rect = title.get_rect(center=(mid_w, mid_h - 60))
+            volver_rect = volver.get_rect(center=(mid_w, mid_h + 20))
+
+            self.game.display.blit(title, title_rect)
+            self.game.display.blit(volver, volver_rect)
+
+            # cursor siempre en volver (por ahora)
+            self.draw_cursor(volver_rect)
+
+            self.blit_screen()
+
+    def check_input(self):
+        # ESC vuelve
+        if self.game.BACK_KEY:
+            self.game.curr_menu = self.game.main_menu
+            self.run_display = False
+
+        # ENTER en "Volver" vuelve
+        if self.game.START_KEY and self.state == "Volver":
+            self.game.curr_menu = self.game.main_menu
+            self.run_display = False
+
+
+class LevelsMenu(Menu):
+    def __init__(self, game):
+        super().__init__(game)
+        self.options = ["Nivel 1", "Nivel 2", "Volver"]
+        self.index = 0  # opción seleccionada
+
+    def display_menu(self):
+        self.run_display = True
+        while self.run_display:
+            self.game.check_events()
+            self.check_input()
+
+            self.game.display.fill((0, 0, 0))
+            mid_w, mid_h = self.game.display.get_rect().center
+
+            title = self.game.render_bitmap_text_surface(
+                "Niveles", self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
+            )
+            title_rect = title.get_rect(center=(mid_w, mid_h - 70))
+            self.game.display.blit(title, title_rect)
+
+            # dibuja opciones
+            option_rects = []
+            y = mid_h - 10
+            for i, opt in enumerate(self.options):
+                surf = self.game.render_bitmap_text_surface(
+                    opt, self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
+                )
+                rect = surf.get_rect(center=(mid_w, y + i * 25))
+                self.game.display.blit(surf, rect)
+                option_rects.append(rect)
+
+            # cursor en la opción actual
+            self.draw_cursor(option_rects[self.index])
+
+            self.blit_screen()
+
+    def check_input(self):
+        if self.game.DOWN_KEY:
+            self.index = (self.index + 1) % len(self.options)
+        if self.game.UP_KEY:
+            self.index = (self.index - 1) % len(self.options)
+
+        # ESC vuelve
+        if self.game.BACK_KEY:
+            self.game.curr_menu = self.game.main_menu
+            self.run_display = False
+
+        # ENTER selecciona
+        if self.game.START_KEY:
+            choice = self.options[self.index]
+
+            if choice == "Volver":
+                self.game.curr_menu = self.game.main_menu
+                self.run_display = False
+
+            elif choice == "Nivel 1":
+                # aquí puedes setear variables y arrancar juego
+                self.game.selected_level = 1
                 self.game.playing = True
-                self.run_display = False  # salir del menú
-            elif self.state == "Options":
-                print("Options selected (pendiente)")
+                self.run_display = False
+
+            elif choice == "Nivel 2":
+                self.game.selected_level = 2
+                self.game.playing = True
+                self.run_display = False
