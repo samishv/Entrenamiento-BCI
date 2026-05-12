@@ -489,6 +489,8 @@ class Game:
                 if tile and tile.get("type") == tile_type:
                     return True
         return False
+    
+        
 
     
     def run(self):
