@@ -5,10 +5,12 @@ import pygame
 from scripts.utils import load_images, Animation
 from scripts.entities import Player
 from scripts.tilemap import Tilemap
+from menu import MainMenu, ConfigMenu, LevelsMenu
 
 class Game:
     def __init__(self):
         pygame.init()
+        self.running, self.playing = True, False
         pygame.display.set_caption("juego v1_v11")
 
         self.base_size = (480, 270)
@@ -23,6 +25,21 @@ class Game:
         self._recalc_scaling()
 
         self.clock = pygame.time.Clock()
+
+        # === Asuntos del menu ===
+    
+        self.main_menu = MainMenu(self)
+        self.config_menu = ConfigMenu(self)
+        self.levels_menu = LevelsMenu(self)
+
+        self.curr_menu = self.main_menu
+
+        self.selected_level = 1  
+
+        self.DOWN_KEY = False
+        self.UP_KEY = False
+        self.START_KEY = False
+        self.BACK_KEY  = False
         
         # ===== PARALLAX BACKGROUND =====
         self.bg_folder = os.path.join("data", "images", "background", "level1")
@@ -233,6 +250,7 @@ class Game:
         self.bitmap_charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@_,.;: "
         self.bitmap_font = self.load_numbered_bitmap_font("data/fonts", self.bitmap_charset, start_index=1)
         self.bitmap_spacing = 1
+        self.bitmap_font_white = self.recolor_bitmap_font(self.bitmap_font, (255, 255, 255))
         
         # ===== VALIDAR GAMER TAG =====
         self.gamer_tag_alpha = 0
@@ -250,12 +268,25 @@ class Game:
         self.bitmap_font_big = {}
         self.bitmap_font_mid = {}
         self.bitmap_font_chibi = {}
+        self.bitmap_font_big_white = {}
+        self.bitmap_font_mid_white = {}
+        self.bitmap_font_chibi_white = {}
         for ch, img in self.bitmap_font.items():
             w, h = img.get_size()
             self.bitmap_font_big[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_big, h * self.bitmap_scale_big))
             self.bitmap_font_mid[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_mid, h * self.bitmap_scale_mid))
             self.bitmap_font_chibi[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_chibi, h * self.bitmap_scale_chibi))
+
+        for ch, img in self.bitmap_font_white.items():
+            w, h = img.get_size()
+            self.bitmap_font_big_white[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_big, h * self.bitmap_scale_big))
+            self.bitmap_font_mid_white[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_mid, h * self.bitmap_scale_mid))
+            self.bitmap_font_chibi_white[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_chibi, h * self.bitmap_scale_chibi))
+        self.curr_menu = MainMenu(self)
         
+
+
+
     def load_numbered_bitmap_font(self, folder, charset, start_index=1):
         font = {}
         for i, ch in enumerate(charset):
@@ -337,7 +368,31 @@ class Game:
             y_off = baseline - rect_bottom
             surface.blit(img, (cx, y + y_off))
             cx += img.get_width() + spacing
-                
+    
+        
+    def recolor_bitmap_font(self, font, color=(255, 255, 255), bg_colorkey=None):
+        """
+        Convierte cada glyph a una máscara y lo reconstruye con el color deseado.
+        - Funciona perfecto si el fondo es transparente (alpha) o si defines colorkey.
+        - bg_colorkey: si tus imágenes NO tienen transparencia, pon aquí el color del fondo a eliminar.
+        """
+        new_font = {}
+        for ch, glyph in font.items():
+            g = glyph.convert_alpha()
+
+            # Si tus PNGs no tienen alpha y el fondo es un color sólido, usa colorkey
+            if bg_colorkey is not None:
+                g.set_colorkey(bg_colorkey)
+
+            # Crear máscara desde la forma visible del glyph (alpha/colorkey)
+            mask = pygame.mask.from_surface(g)
+
+            # Reconstruir Surface: píxeles del glyph con el color, resto transparente
+            colored = mask.to_surface(setcolor=(*color, 255), unsetcolor=(0, 0, 0, 0))
+            new_font[ch] = colored.convert_alpha()
+
+        return new_font
+            
     def _approach_alpha(self, alpha, target, duration, dt):
         if duration <= 0:
             return target
@@ -434,9 +489,22 @@ class Game:
                 if tile and tile.get("type") == tile_type:
                     return True
         return False
+    
+        
 
+    
     def run(self):
-        while True:
+        # Router de niveles
+        if self.selected_level == 1:
+            self.run_level_1()
+        elif self.selected_level == 2:
+            self.run_level_2()  
+        else:
+            self.run_level_1()
+
+
+    def run_level_1(self):
+        while self.playing and self.running:
             
             now_anim = pygame.time.get_ticks()
             frame_dt = (now_anim - self.anim_last_time) / 1000.0
@@ -444,14 +512,14 @@ class Game:
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-
+                    self.running = False
+                    self.playing = False
+                    return
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_F11:
                         self._toggle_fullscreen()
-                    if event.key == pygame.K_ESCAPE and self.fullscreen:
-                        self._toggle_fullscreen()
+                    if event.key == pygame.K_ESCAPE:
+                        self.playing = False
                         
                     # ===== SPACE SOLO EN WAITING =====
                     if event.key == pygame.K_SPACE and self.state == self.WAITING and self.active_challenge:
@@ -937,6 +1005,7 @@ class Game:
                     t2.set_alpha(int(self.end_title_alpha))
                     self.display.blit(t1, (11*16, 1*16))
                     self.display.blit(t2, (11*16, 6*16))
+                
                             
             # ===== ACTUALIZAR PANTALLA Y RELOJ FPS ===== 
             self.screen.fill((0, 0, 0))
@@ -945,6 +1014,59 @@ class Game:
             pygame.display.update()
 
             self.clock.tick(60)
+            
+
+    def run_level_2(self):
+        # Nivel 2 PENDIENTE
+        while self.playing and self.running:
+            self.check_events()
+
+            if self.BACK_KEY:
+                if self.fullscreen:
+                    self._toggle_fullscreen()
+                self.playing = False
+                self.curr_menu = self.main_menu
+                return
+
+            self.display.fill((0, 0, 0))
+            msg = self.render_bitmap_text_surface(
+                "Nivel 2 (pendiente)", self.bitmap_font, spacing=self.bitmap_spacing
+            )
+            self.display.blit(msg, (20, 20))
+
+            self.screen.fill((0, 0, 0))
+            scaled = pygame.transform.scale(self.display, self.blit_size)
+            self.screen.blit(scaled, self.blit_offset)
+            pygame.display.update()
+
+            self.reset_keys()
+            self.clock.tick(60)
+
+    
+    def reset_keys(self):
+        self.UP_KEY = self.DOWN_KEY = self.START_KEY = self.BACK_KEY = False
+
+    def check_events(self):
+        # resetea por frame
+        self.UP_KEY = self.DOWN_KEY = self.START_KEY = self.BACK_KEY = False
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:              
+                self.running = False
+                self.playing = False
+                pygame.quit()
+                return
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    self.UP_KEY = True
+                elif event.key == pygame.K_DOWN:
+                    self.DOWN_KEY = True
+                elif event.key == pygame.K_RETURN:
+                    self.START_KEY = True
+                elif event.key == pygame.K_ESCAPE:
+                    self.BACK_KEY = True
+
+
 
 if __name__ == "__main__":
     Game().run()
