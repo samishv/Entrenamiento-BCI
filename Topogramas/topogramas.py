@@ -5,7 +5,7 @@ import mne
 from mne.viz import plot_topomap
 
 df = pd.read_excel("datosCMC2.xlsx")
-metrica = "Area gamma Z" 
+metrica = "Area Gamma M" 
 sujetos = df["sujeto"].unique()
 musculos = df["musculo"].unique()
 
