@@ -10,9 +10,9 @@ plt.close('all')
 # ─────────────────────────────────────────────────────────────────────────────
 
 BASE_DIR   = Path(r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC")
-SUJETO     = "S7"                                              # S17, S18
-PRUEBA     = "CK"                                               # OV, OK, CV, CK
-MOVIMIENTO = "RE"                                               # ME, MI, RE
+SUJETO     = "S5"                                              # S17, S18
+PRUEBA     = "OK"                                               # OV, OK, CV, CK
+MOVIMIENTO = "ME"                                               # ME, MI, RE
 
 PLOT_EEG_SCRIPT       = "Ver_Datos_EEG.py"
 PLOT_EMG_DINAM_SCRIPT = "Ver_Datos_EMG.py"

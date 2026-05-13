@@ -1,24 +1,30 @@
 import os
+import re
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import butter, iirnotch, sosfiltfilt, tf2sos, welch
-import pywt
+from scipy.signal import welch
+
+from Procesamiento_Funciones import (
+    cargar_npy_eeg,
+    aplicar_notch_multiple,
+    aplicar_wavelet_dwt_multicanal,
+    ica_eliminar_componente,
+    aplicar_pasabanda_butter,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN
 # ─────────────────────────────────────────────────────────────────────────────
 
 if "RUTA_NPY" not in globals():
-    RUTA_NPY  = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\S17\EEG\S17_260421_EEG_OV_2_ME.npy"
+    RUTA_NPY = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\S17\EEG\S17_260421_EEG_OV_2_ME.npy"
 
-FS           = 250                  # Frecuencia de muestreo (Hz)
-VENTANA_SEG  = 1.0                  # Resolución Welch: FS/NPERSEG = Hz por barra (500-0.5Hz) (1000-0.25Hz) MAX 125Hz
-NPERSEG      = int(VENTANA_SEG*FS)
+FS = 250
 
-PAD_MUESTRAS = 1 * FS               # Muestras para padding: PAD - 28 segs - PAD
-ORDEN        = 4                    # Orden filtro Butterworth
-F_NOTCH      = 60.0                 # Frecuencia del filtro notch (Hz)
-Q_NOTCH      = 30                   # Factor de calidad del notch
+VENTANA_SEG = 1.0
+NPERSEG = int(VENTANA_SEG * FS)
+
+PAD_MUESTRAS = 5 * FS
 
 CANALES = ['Fz', 'FC3', 'FCz', 'FC4', 'Cz', 'C3', 'C4']
 
@@ -50,21 +56,33 @@ COLOR_TICK  = '#a5a5a5'
 COLOR_LABEL = '#d1d1d1'
 COLOR_TITLE = '#ffffff'
 
+FREQS_NOTCH =   (60.0, 120.0)
+Q_NOTCH =       5.0
+
+WAVELET =       'db4'
+LEVEL =         6
+NIVELES_CERO =  [1, 6]     # D6 y D1
+REMOVE_APPROX = True       # A6
+WAVE_MODE =     'reflect'
+
+IC_TO_REMOVE =  0          # IC0
+BP_ORDER =      3          
+
 # ─────────────────────────────────────────────────────────────────────────────
 # PARASEO DE LAS FIGURAS
 # ─────────────────────────────────────────────────────────────────────────────
 
 CONDICION_MAP = {
-    'OV': 'Ojos Abiertos - Movimiento Visual',
-    'OK': 'Ojos Abiertos - Movimiento Cinestésico',
-    'CK': 'Ojos Cerrados - Movimiento Cinestésico',
-    'CV': 'Ojos Cerrados - Movimiento Visual',
+    'OV': 'Ojos Abiertos - Movimiento Visual (OV)',
+    'OK': 'Ojos Abiertos - Movimiento Cinestésico (OK)',
+    'CK': 'Ojos Cerrados - Movimiento Cinestésico (CK)',
+    'CV': 'Ojos Cerrados - Movimiento Visual (CV)',
 }
 
 ESTADO_MAP = {
-    'ME': 'Movimiento Ejecutado',
-    'MI': 'Movimiento Imaginado',
-    'RE': 'Reposo',
+    'ME': 'Movimiento Ejecutado (ME)',
+    'MI': 'Movimiento Imaginado (MI)',
+    'RE': 'Reposo (RE)',
 }
 
 def parsear_nombre_archivo(ruta):
@@ -84,65 +102,37 @@ def parsear_nombre_archivo(ruta):
 PIE_FIGURA = parsear_nombre_archivo(RUTA_NPY)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CARGADERA DE COSAS
-# ─────────────────────────────────────────────────────────────────────────────
-
-datos = np.load(RUTA_NPY)
-if not (datos.ndim == 2 and datos.shape[0] == 7):
-    raise ValueError(f"Shape inesperado: {datos.shape}. Se esperaba (7, n_muestras).")
-
-n_canales, n_muestras = datos.shape
-tiempo = np.arange(n_muestras) / FS
-
-b_n, a_n   = iirnotch(F_NOTCH, Q_NOTCH, FS)
-sos_notch  = tf2sos(b_n, a_n)
-datos      = np.array([sosfiltfilt(sos_notch, canal) for canal in datos])
-print(f"\n  Filtro Notch aplicado → {F_NOTCH} Hz \n")
-
-# ─────────────────────────────────────────────────────────────────────────────
 # FUNCIONES
 # ─────────────────────────────────────────────────────────────────────────────
 
 def pantalla_completa(fig):
     try:
         manager = fig.canvas.manager
-        try:    manager.window.state('zoomed');  return
-        except: pass
-        try:    manager.window.showMaximized();  return
-        except: pass
-        try:    manager.frame.Maximize(True);    return
-        except: pass
+        try:
+            manager.window.state('zoomed'); return
+        except:
+            pass
+        try:
+            manager.window.showMaximized(); return
+        except:
+            pass
+        try:
+            manager.frame.Maximize(True); return
+        except:
+            pass
         fig.set_size_inches(19, 10.5)
     except:
         fig.set_size_inches(19, 10.5)
 
-def butter_bandpass_sos(f_low, f_high, fs, order=ORDEN):
-    nyq = fs / 2
-    return butter(order, [f_low / nyq, f_high / nyq], btype='band', output='sos')
-
-def nombre_salida(ruta, sufijo):
-    CARPETA_IMGS = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\IMGS"
-    os.makedirs(CARPETA_IMGS, exist_ok=True)          # la crea si no existe
-    nombre = os.path.splitext(os.path.basename(ruta))[0]
-    return os.path.join(CARPETA_IMGS, f"{nombre}_{sufijo}.svg")
-
-def aplicar_filtro_con_padding(datos, f_low, f_high, fs, order=ORDEN, pad=PAD_MUESTRAS):
-    sos = butter_bandpass_sos(f_low, f_high, fs, order)
-    resultado = np.zeros_like(datos)
-
-    for i, canal in enumerate(datos):
-        canal = reducir_parpadeo_dwt(canal) 
-        inicio_espejo = canal[:pad][::-1]
-        fin_espejo    = canal[-pad:][::-1]
-        señal_ext     = np.concatenate([inicio_espejo, canal, fin_espejo])
-        señal_filt_ext = sosfiltfilt(sos, señal_ext)
-        resultado[i] = señal_filt_ext[pad:pad + len(canal)]
-
-    return resultado
-
 def calcular_psd(señal, fs, nperseg):
     freqs, psd = welch(señal, fs=fs, nperseg=nperseg)
     return freqs, psd
+
+# def nombre_salida(ruta, sufijo):
+#     CARPETA_IMGS = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\IMGS"
+#     os.makedirs(CARPETA_IMGS, exist_ok=True)          # la crea si no existe
+#     nombre = os.path.splitext(os.path.basename(ruta))[0]
+#     return os.path.join(CARPETA_IMGS, f"{nombre}_{sufijo}.svg")
 
 def estilo_ax(ax):
     ax.set_facecolor(BG_AX)
@@ -159,104 +149,122 @@ def plot_bandas_psd(ax, psd_max, f_low, f_high, etiquetas=False):
                    alpha=0.15, color=bc, zorder=0)
         if etiquetas:
             ax.text((b_ini + b_fin) / 2, psd_max * 1.02,
-                    nombre, color=bc, fontsize=6.5, ha='center', va='bottom')
-            
-def reducir_parpadeo_dwt(senal, wavelet='db4', nivel=5):
-    coefs = pywt.wavedec(senal, wavelet, level=nivel)
-    coefs[1] = np.zeros_like(coefs[1])
-    return pywt.waverec(coefs, wavelet)[:len(senal)]
+                    nombre, color=bc, fontsize=6.5,
+                    ha='center', va='bottom')
 
-def plot_figura(nombre_fig, datos_filt, f_low, f_high,
-                tiempo, fs, nperseg, colores, canales, pie):
+def plot_figura(nombre_fig, datos_filt, f_low, f_high, tiempo, fs, nperseg, colores, canales, pie):
     fig, axes = plt.subplots(
-        7, 2,
-        gridspec_kw={'width_ratios': [1, 2], 'hspace': 0.15, 'wspace': 0.08}
+        7, 2, sharex='col', sharey='col', 
+        gridspec_kw={'width_ratios': [3,1], 'hspace': 0.15, 'wspace': 0.08}
     )
     fig.patch.set_facecolor(BG_FIG)
-    fig.subplots_adjust(left=0.07, right=0.98, top=0.94, bottom=0.07)
+    fig.subplots_adjust(left=0.05, right=0.975, top=0.96, bottom=0.06)
+    
+    fig.set_size_inches(19, 10.5) 
 
-    y_min_fig  = datos_filt.min()
-    y_max_fig  = datos_filt.max()
-    margen_fig = (y_max_fig - y_min_fig) * 0.08
-
-    psd_max = 0
-    psds = []
-    for i in range(7):
-        f, p = calcular_psd(datos_filt[i], fs, nperseg)
-        psds.append((f, p))
-        psd_max = max(psd_max, p.max())
-
-    for i in range(7):
-        ax_s, ax_p = axes[i, 0], axes[i, 1]
-        color, canal = colores[i], canales[i]
-        freqs, psd = psds[i]
-
-        # ── Señal ──────────────────────────────────────────────────────────
-        estilo_ax(ax_s)
-        ax_s.plot(tiempo, datos_filt[i], color=color, linewidth=0.75, alpha=0.95)
-        ax_s.set_xlim(tiempo[0], tiempo[-1])
-        ax_s.set_ylim(y_min_fig - margen_fig, y_max_fig + margen_fig)
-        ax_s.set_ylabel(canal, color=color, fontsize=9,
-                        rotation=0, labelpad=32, va='center')
-        ax_s.grid(True, color=COLOR_GRID, linewidth=0.5, linestyle='--')
-        if i < 6:
-            ax_s.tick_params(labelbottom=False)
-        else:
-            ax_s.set_xlabel('Tiempo (s)', color=COLOR_LABEL, fontsize=9)
-
-        # ── PSD (BAR PARA BARRA Y PLOT PARA CLASICO DE TODA LA VIDA)────────
-        estilo_ax(ax_p)
-                
-        ax_p.plot(freqs, psd, color=color, alpha=0.85, linewidth=1.5)
-        
-        plot_bandas_psd(ax_p, psd_max, f_low, f_high, etiquetas=(i == 0))
-        ax_p.set_xlim(PSD_XLIM)
-        ax_p.set_ylim(0, psd_max * 1.15)
-        ax_p.grid(True, color=COLOR_GRID, linewidth=0.5, linestyle='--', axis='y')
-        ax_p.yaxis.get_offset_text().set_color(COLOR_TICK)
-        ax_p.yaxis.get_offset_text().set_fontsize(6)
-        if i < 6:
-            ax_p.tick_params(labelbottom=False)
-        else:
-            ax_p.set_xlabel('Frecuencia (Hz)', color=COLOR_LABEL, fontsize=9)
-        if i == 0:
-            ax_p.set_title('PSD  (µV²/Hz)', color=COLOR_LABEL, fontsize=7.5, pad=3)
-
-    # ── Título superior ────────────────────────────────────────────────────
     fig.suptitle(
-        f'{nombre_fig}  —  Butterworth ord. {ORDEN}  |  {f_low}–{f_high} Hz  |  fs = {fs} Hz',
+        f'{nombre_fig} — Butterworth ord. {BP_ORDER} | {f_low}–{f_high} Hz | fs = {fs} Hz', 
         color=COLOR_TITLE, fontsize=11, fontweight='bold'
     )
+    
+    y_min_fig = datos_filt.min()
+    y_max_fig = datos_filt.max()
+    margen_fig = (y_max_fig - y_min_fig) * 0.08
 
-    # ── Pie de figura ──────────────────────────────────────────────────────
-    fig.text(0.5, 0.005, pie,
-             ha='center', va='bottom',
-             fontsize=8, color= COLOR_LABEL,
-             style='italic', fontweight='bold')
+    psd_max_global = 0.0
+    psds = []
+    for i in range(7):
+        freqs, psd = calcular_psd(datos_filt[i], fs, nperseg)
+        psds.append((freqs, psd))
+        psd_max_global = max(psd_max_global, psd.max())
+
+    fig.text(0.5, 0.01, pie, ha='center', va='bottom', fontsize=8, color= COLOR_LABEL, style='italic', fontweight='bold')
+
+    for i in range(7):
+        ax_t = axes[i, 0]
+        ax_p = axes[i, 1]
+        estilo_ax(ax_t); estilo_ax(ax_p)
+        
+        # Tiempo
+        ax_t.plot(tiempo, datos_filt[i], color=colores[i], linewidth=0.8)
+        ax_t.set_ylabel(canales[i], color=COLOR_LABEL, fontsize=8)
+        ax_t.set_xlim(tiempo[0], tiempo[-1]) # Evita espacios vacíos a los lados
+        ax_t.set_ylim(y_min_fig - margen_fig, y_max_fig + margen_fig) # <--- FIX TIEMPO
+        
+        if i < 6:
+            ax_t.set_xticklabels([])
+        else:
+            ax_t.set_xlabel("Tiempo (s)", color=COLOR_LABEL, fontsize=8)
+        
+        freqs, psd = psds[i]
+        ax_p.plot(freqs, psd, color=colores[i], linewidth=0.9)
+        ax_p.set_xlim(0, max(45, f_high) + 8)
+        ax_p.set_ylim(0, psd_max_global * 1.15)
+        
+        if i < 6:
+            ax_p.set_xticklabels([])
+        else:
+            ax_p.set_xlabel("Frecuencia (Hz)", color=COLOR_LABEL, fontsize=8)
+
+    for i in range(7):
+        ax_p = axes[i, 1]
+        plot_bandas_psd(ax_p, psd_max_global, f_low, f_high, etiquetas=(i == 0))
+        
+    # === DESCOMENTAR PARA GUARDAR IMG EN RUTA
     
-    fig.set_size_inches(19, 10.5)     
-    
-    ruta_svg = nombre_salida(RUTA_NPY, "EEG")
-    fig.savefig(ruta_svg, format='svg', bbox_inches='tight',
-                facecolor=fig.get_facecolor())
-    print(f"\n  Figura guardada en: {ruta_svg}")
-    
+    # ruta_svg = nombre_salida(RUTA_EMG, "EMG")
+    # fig.savefig(ruta_svg, format='svg', bbox_inches='tight',
+    #             facecolor=fig.get_facecolor())
+    # print(f"\n  Figura guardada en: {ruta_svg}")
+
     pantalla_completa(fig)
-    
     return fig
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PLOT MA-MA-MASIVO
+# PROCESAR SEÑALES
 # ─────────────────────────────────────────────────────────────────────────────
 
-PSD_XLIM   = (0, 45+8)
+# 1) Cargar
+datos = cargar_npy_eeg(RUTA_NPY, n_canales_esperados=len(CANALES))
+n_canales, n_muestras = datos.shape
+tiempo = np.arange(n_muestras) / FS
 
-for idx, (nombre, f_low, f_high) in enumerate(FIGURAS, start=1):
-    print(f"    Generando Figura {idx}: {nombre}  ({f_low}–{f_high} Hz)...")
-    datos_filt = aplicar_filtro_con_padding(datos, f_low, f_high, FS, ORDEN)
-    plot_figura(nombre, datos_filt, f_low, f_high,
-                tiempo, FS, NPERSEG, COLORES, CANALES, PIE_FIGURA)
+# 2) Notch 60 y 120 Hz (Q=5)
+datos = aplicar_notch_multiple(datos, fs=FS, freqs=FREQS_NOTCH, Q=Q_NOTCH, pad=PAD_MUESTRAS)
+print(f"\n  [OK] Notch aplicado: {FREQS_NOTCH} Hz | Q={Q_NOTCH}")
 
-print("\n  Todas las figuras EEG generadas.\n\n")
+# 3) Wavelet db4 nivel 6, eliminar D1 D6 y A6
+datos = aplicar_wavelet_dwt_multicanal(
+    datos,
+    wavelet=WAVELET,
+    level=LEVEL,
+    niveles_cero=NIVELES_CERO,
+    remove_approx=REMOVE_APPROX,
+    pad=PAD_MUESTRAS,
+    mode=WAVE_MODE
+)
+print(f"  [OK] Wavelet aplicado: {WAVELET} | level={LEVEL} | cero={NIVELES_CERO} | remove A{LEVEL}={REMOVE_APPROX}")
 
+# 4) ICA solo si el sujeto es S5 (remover IC0)
+es_s5 = bool(re.search(r'(^|[\\/])S5([\\/]|_)', RUTA_NPY, flags=re.IGNORECASE))
+if es_s5:
+    datos, _ica = ica_eliminar_componente(datos, fs=FS, ch_names=CANALES, ic_to_remove=IC_TO_REMOVE)
+    print(f"  [OK] ICA aplicada (solo S5): removida IC{IC_TO_REMOVE}")
+else:
+    print("  [SKIP] ICA omitida (sujeto distinto de S5)")
+
+# 5) Pasa Banda y Plot
+for (nombre, f_low, f_high) in FIGURAS:
+    print(f"\n  → Generando: {nombre} ({f_low}-{f_high} Hz)")
+    datos_filt = aplicar_pasabanda_butter(
+        datos,
+        fs=FS,
+        f_low=f_low,
+        f_high=f_high,
+        orden=BP_ORDER,
+        pad=PAD_MUESTRAS
+    )
+    plot_figura(nombre, datos_filt, f_low, f_high, tiempo, FS, NPERSEG, COLORES, CANALES, PIE_FIGURA)
+
+print("\n  [FIN] Todas las figuras EEG generadas.\n")
 plt.show()

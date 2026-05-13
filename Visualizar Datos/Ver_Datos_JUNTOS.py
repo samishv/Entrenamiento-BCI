@@ -140,20 +140,21 @@ print("\n  Procesamiento completado.")
 def pantalla_completa(fig):
     try:
         manager = fig.canvas.manager
-        for metodo in ['manager.window.state("zoomed")',
-                        'manager.window.showMaximized()',
-                        'manager.frame.Maximize(True)']:
-            try:    eval(metodo); return
-            except: pass
+        try:    manager.window.state('zoomed');   return
+        except: pass
+        try:    manager.window.showMaximized();   return
+        except: pass
+        try:    manager.frame.Maximize(True);     return
+        except: pass
         fig.set_size_inches(19, 10.5)
     except:
         fig.set_size_inches(19, 10.5)
         
-def nombre_salida(ruta, sufijo):
-    CARPETA_IMGS = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\IMGS"
-    os.makedirs(CARPETA_IMGS, exist_ok=True)          # la crea si no existe
-    nombre = os.path.splitext(os.path.basename(ruta))[0]
-    return os.path.join(CARPETA_IMGS, f"{nombre}_{sufijo}.svg")
+# def nombre_salida(ruta, sufijo):
+#     CARPETA_IMGS = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\IMGS"
+#     os.makedirs(CARPETA_IMGS, exist_ok=True)          # la crea si no existe
+#     nombre = os.path.splitext(os.path.basename(ruta))[0]
+#     return os.path.join(CARPETA_IMGS, f"{nombre}_{sufijo}.svg")
 
 def estilo_ax(ax):
     ax.set_facecolor(BG_AX)
@@ -213,10 +214,12 @@ ax.set_xlim(0, tmax)
 
 fig.set_size_inches(19, 10.5) 
 
-ruta_svg = nombre_salida(RUTA_DINAM, "JUNTOS")
-fig.savefig(ruta_svg, format='svg', bbox_inches='tight',
-            facecolor=fig.get_facecolor())
-print(f"\n  Figura guardada en: {ruta_svg}")
+# === DESCOMENTAR PARA GUARDAR IMG EN RUTA
+
+# ruta_svg = nombre_salida(RUTA_DINAM, "JUNTOS")
+# fig.savefig(ruta_svg, format='svg', bbox_inches='tight',
+#             facecolor=fig.get_facecolor())
+# print(f"\n  Figura guardada en: {ruta_svg}")
 
 pantalla_completa(fig)
 
