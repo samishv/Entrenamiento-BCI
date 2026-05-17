@@ -1,4 +1,3 @@
-import sys
 import os
 import pygame
 
@@ -11,7 +10,7 @@ class Game:
     def __init__(self):
         pygame.init()
         self.running, self.playing = True, False
-        pygame.display.set_caption("juego v1_v11")
+        pygame.display.set_caption("juego v1_v12")
 
         self.base_size = (480, 270)
         self.display = pygame.Surface(self.base_size)
@@ -19,6 +18,11 @@ class Game:
         self.window_size = (1280, 720)
         self.fullscreen = False
         self.screen = pygame.display.set_mode(self.window_size)
+        
+        # ===== FONDO DEL MENÚ =====
+        menu_bg_path = os.path.join("data", "images", "background", "menu_b", "1.png")
+        self.menu_bg = pygame.image.load(menu_bg_path).convert_alpha()
+        self.menu_bg = pygame.transform.scale(self.menu_bg, self.base_size)
 
         self.blit_size = self.base_size
         self.blit_offset = (0, 0)
@@ -26,8 +30,7 @@ class Game:
 
         self.clock = pygame.time.Clock()
 
-        # === Asuntos del menu ===
-    
+        # === ASUNTOS DEL MENU ===
         self.main_menu = MainMenu(self)
         self.config_menu = ConfigMenu(self)
         self.levels_menu = LevelsMenu(self)
@@ -41,19 +44,11 @@ class Game:
         self.START_KEY = False
         self.BACK_KEY  = False
         
-        # ===== PARALLAX BACKGROUND =====
-        self.bg_folder = os.path.join("data", "images", "background", "level1")
-        self.bg_layers = []
-        for i in range(1, 5):
-            path = os.path.join(self.bg_folder, f"{i:02d}.png")
-            img = pygame.image.load(path).convert_alpha()
-            img = pygame.transform.scale(img, self.base_size)
-            self.bg_layers.append(img)
+        # ===== INPUT DE TEXTO (MENÚ CONFIG) =====
+        self.TEXT_INPUT = ""
+        self.BACKSPACE = False
         
-        self.bg_static = self.bg_layers[0]
-        self.bg_moving = self.bg_layers[1:]
-        
-        self.bg_offsets = [0.0, 0.0, 0.0]
+        # ===== PARALLAX BACKGROUND CONSTANTES =====
         self.bg_speeds = [0.25, 0.50, 0.85]
         self.bg_base_speed = 20.0
         self.bg_speed_current = 0.0
@@ -78,6 +73,9 @@ class Game:
             "player/damage": Animation(load_images("entities/player/damage"), img_dur=5),
         }
         
+        # ===== APLICAR TEMA 1 =====
+        self.apply_level_theme(1)
+        
         # ===== REESCALAR CORAZONES =====
         self.heart_small = []
         for img in self.assets["heart"]:
@@ -97,14 +95,19 @@ class Game:
         # ===== VARIABLES MODIFICABLES (AUTORUN / TIEMPO PARA PULSAR) =====
         self.auto_speed = 2
         self.fail_return_speed = 1.2
-        self.time_limit = 20
+        self.time_limit = 2
+        
+        self.level_time_limits = {
+            1: 2,  # Nivel 1
+            2: 1,  # Nivel 2
+        }
         
         # ===== VIDAS =====
-        self.max_lives = 3
-        self.lives = 3
+        self.max_lives = 1
+        self.lives = 1
         
         # ===== GAMER TAG =====
-        self.gamer_tag = "CosmicHero1507"
+        self.gamer_tag = ""
         
         # ===== CONFIGURACIÓN DE NIVEL (5 CHALLENGES) =====
         self.first_stop = 38
@@ -247,7 +250,7 @@ class Game:
         self.go_walk_end_x = None
         
         # ===== BITMAP FONT =====
-        self.bitmap_charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@_,.;: "
+        self.bitmap_charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$¤+-*=%”’#@&_(),.;:?|{}<>[]§^~© "
         self.bitmap_font = self.load_numbered_bitmap_font("data/fonts", self.bitmap_charset, start_index=1)
         self.bitmap_spacing = 1
         self.bitmap_font_white = self.recolor_bitmap_font(self.bitmap_font, (255, 255, 255))
@@ -282,11 +285,7 @@ class Game:
             self.bitmap_font_big_white[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_big, h * self.bitmap_scale_big))
             self.bitmap_font_mid_white[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_mid, h * self.bitmap_scale_mid))
             self.bitmap_font_chibi_white[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_chibi, h * self.bitmap_scale_chibi))
-        self.curr_menu = MainMenu(self)
         
-
-
-
     def load_numbered_bitmap_font(self, folder, charset, start_index=1):
         font = {}
         for i, ch in enumerate(charset):
@@ -368,26 +367,16 @@ class Game:
             y_off = baseline - rect_bottom
             surface.blit(img, (cx, y + y_off))
             cx += img.get_width() + spacing
-    
         
     def recolor_bitmap_font(self, font, color=(255, 255, 255), bg_colorkey=None):
-        """
-        Convierte cada glyph a una máscara y lo reconstruye con el color deseado.
-        - Funciona perfecto si el fondo es transparente (alpha) o si defines colorkey.
-        - bg_colorkey: si tus imágenes NO tienen transparencia, pon aquí el color del fondo a eliminar.
-        """
         new_font = {}
         for ch, glyph in font.items():
             g = glyph.convert_alpha()
 
-            # Si tus PNGs no tienen alpha y el fondo es un color sólido, usa colorkey
             if bg_colorkey is not None:
                 g.set_colorkey(bg_colorkey)
 
-            # Crear máscara desde la forma visible del glyph (alpha/colorkey)
             mask = pygame.mask.from_surface(g)
-
-            # Reconstruir Surface: píxeles del glyph con el color, resto transparente
             colored = mask.to_surface(setcolor=(*color, 255), unsetcolor=(0, 0, 0, 0))
             new_font[ch] = colored.convert_alpha()
 
@@ -451,6 +440,42 @@ class Game:
             self.screen = pygame.display.set_mode(self.window_size)
         self._recalc_scaling()
         
+    def apply_level_theme(self, level_id: int):
+        self.current_level_theme = level_id
+        suffix = "" if level_id == 1 else "2"
+    
+        self._reload_level_tiles(suffix)
+    
+        bg_level_folder = "level1" if level_id == 1 else "level2"
+        folder = os.path.join("data", "images", "background", bg_level_folder)
+    
+        self._load_parallax_background(folder)
+    
+    def _reload_level_tiles(self, suffix: str):
+        def choose_folder(base):
+            candidate = f"{base}{suffix}"
+            path = os.path.join("data", "images", candidate)
+            return candidate if os.path.isdir(path) else base
+    
+        ice_folder = choose_folder("tiles/ice")
+        water_folder = choose_folder("tiles/water")
+    
+        self.assets["ice"] = load_images(ice_folder)
+        self.assets["water"] = load_images(water_folder)
+    
+    def _load_parallax_background(self, folder_path: str):
+        self.bg_folder = folder_path
+        self.bg_layers = []
+        for i in range(1, 5):
+            path = os.path.join(self.bg_folder, f"{i:02d}.png")
+            img = pygame.image.load(path).convert_alpha()
+            img = pygame.transform.scale(img, self.base_size)
+            self.bg_layers.append(img)
+    
+        self.bg_static = self.bg_layers[0]
+        self.bg_moving = self.bg_layers[1:]
+        self.bg_offsets = [0.0, 0.0, 0.0]
+        
     def current_challenge(self):
         if 0 <= self.stop_index < len(self.challenges):
             return self.challenges[self.stop_index]
@@ -490,61 +515,141 @@ class Game:
                     return True
         return False
     
-        
-
+    def reset_level(self, level_id: int):
+        self.apply_level_theme(level_id)
+    
+        self.time_limit = self.level_time_limits.get(level_id, 2)
+        self.time_left = self.time_limit
+    
+        self.tilemap = Tilemap(self, tile_size=16)
+        self.tilemap.load("map.json")
+        self.tile_size = self.tilemap.tile_size
+    
+        self.player = Player(self, (0, 170), (32, 48))
+        self.scroll = [0, 0]
+        self.fixed_scroll_y = None
+    
+        self.auto_speed = 2
+        self.auto_speed_normal = self.auto_speed
+        self.fail_return_speed = 1.2
+        self.fail_return_active = False
+    
+        now = pygame.time.get_ticks()
+        self.last_time = now
+        self.anim_last_time = now
+    
+        self.max_lives = 1
+        self.lives = self.max_lives
+        self.score = 0
+    
+        self.first_stop = 38
+        self.challenge_spacing = 60
+        self.total_challenges = 5
+        self.stop_tiles = [self.first_stop + i * self.challenge_spacing for i in range(self.total_challenges)]
+        self.stop_index = 0
+        self.stop_x_px = self.stop_tiles[self.stop_index] * self.tile_size
+        self.challenge_stop_indices = set(range(self.total_challenges))
+        self.active_challenge = True
+    
+        self.state = self.RUNNING
+    
+        self.max_presses = 3
+        self.hand_frames = self.assets["hand"]
+        self.hand_frame_idx = 0
+        self.hand_timer = 0.0
+        self.hand_active = False
+    
+        self.hearts_alpha = 0
+        self.hearts_fading_in = True
+        self.hearts_fading_out = False
+        self.end_title_alpha = 0
+        self.end_title_fade_in = False
+        self.prev_show_end = False
+    
+        self.msg_alpha = 0
+        self.msg_state = "HIDDEN"
+        self.msg_interval_index = 0
+    
+        self.recovering = False
+        self.escape_started = False
+        self.escape_target_y = None
+        self.pending_life_loss = False
+        self.go_phase = "NONE"
+        self.go_walk_end_x = None
+    
+        self.bg_offsets = [0.0, 0.0, 0.0]
+        self.bg_speed_current = 0.0
+    
+        self.challenges = []
+        for stop_tile in self.stop_tiles:
+            balloon_tile_x = stop_tile + 7
+            bridge_tile_x0 = balloon_tile_x - (self.bridge_w_tiles // 2)
+            self.challenges.append({
+                "balloon_tile_x": balloon_tile_x,
+                "balloon_world_y": 32,
+                "hand_world_y": 32 + (self.hand_offset_tiles_y * self.tile_size),
+                "balloon_visible": True,
+                "balloon_is_popping": False,
+                "balloon_pop_frame": 0,
+                "balloon_pop_timer": 0.0,
+                "press_count": 0,
+                "scored": False,
+                "bridge_tile_x0": bridge_tile_x0,
+                "bridge_world_x": bridge_tile_x0 * self.tile_size,
+                "bridge_world_y": 32 + 32,
+                "bridge_visible": True,
+                "bridge_state": "FLOATING",
+                "bridge_vel_y": 0.0,
+                "bridge_target_top_tile_y": None,
+                "bridge_done": False,
+            })
     
     def run(self):
-        # Router de niveles
+        # === ROUTER DE NIVELES ===
         if self.selected_level == 1:
             self.run_level_1()
         elif self.selected_level == 2:
             self.run_level_2()  
         else:
             self.run_level_1()
-
-
-    def run_level_1(self):
-        while self.playing and self.running:
             
+    def _run_level_shared(self):
+        while self.playing and self.running:
             now_anim = pygame.time.get_ticks()
             frame_dt = (now_anim - self.anim_last_time) / 1000.0
             self.anim_last_time = now_anim
-
+    
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
                     self.playing = False
                     return
+    
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_F11:
                         self._toggle_fullscreen()
                     if event.key == pygame.K_ESCAPE:
                         self.playing = False
-                        
-                    # ===== SPACE SOLO EN WAITING =====
+    
                     if event.key == pygame.K_SPACE and self.state == self.WAITING and self.active_challenge:
                         cur = self.current_challenge()
                         if not cur:
                             continue
-                    
                         cur["press_count"] += 1
-                    
                         if cur["press_count"] >= self.max_presses:
                             self.state = self.RESOLVED
                             self.hand_active = False
-                            
                             if not cur.get("scored", False):
                                 elapsed = max(0.0, self.time_limit - self.time_left)
                                 gained = int(max(0.0, (self.time_limit - elapsed)) * self.max_score_per_challenge / self.time_limit)
                                 gained = max(0, min(gained, self.max_score_per_challenge))
                                 self.score += gained
                                 cur["scored"] = True
-                    
                             cur["balloon_is_popping"] = True
                             cur["bridge_state"] = "FALLING"
                             cur["bridge_vel_y"] = 0.0
                             cur["bridge_target_top_tile_y"] = self._find_water_top_y_for_bridge(cur["bridge_tile_x0"])
-
+                            
             # ===== CAMARA QUE SIGUE =====
             if self.fixed_scroll_y is None:
                 self.fixed_scroll_y = self.scroll[1]
@@ -1014,50 +1119,40 @@ class Game:
             pygame.display.update()
 
             self.clock.tick(60)
-            
+    
+    def run_level_1(self):
+        self.reset_level(1)
+        self._run_level_shared()
 
     def run_level_2(self):
-        # Nivel 2 PENDIENTE
-        while self.playing and self.running:
-            self.check_events()
-
-            if self.BACK_KEY:
-                if self.fullscreen:
-                    self._toggle_fullscreen()
-                self.playing = False
-                self.curr_menu = self.main_menu
-                return
-
-            self.display.fill((0, 0, 0))
-            msg = self.render_bitmap_text_surface(
-                "Nivel 2 (pendiente)", self.bitmap_font, spacing=self.bitmap_spacing
-            )
-            self.display.blit(msg, (20, 20))
-
-            self.screen.fill((0, 0, 0))
-            scaled = pygame.transform.scale(self.display, self.blit_size)
-            self.screen.blit(scaled, self.blit_offset)
-            pygame.display.update()
-
-            self.reset_keys()
-            self.clock.tick(60)
-
+        self.reset_level(2)
+        self._run_level_shared()
     
     def reset_keys(self):
         self.UP_KEY = self.DOWN_KEY = self.START_KEY = self.BACK_KEY = False
+        self.TEXT_INPUT = ""
+        self.BACKSPACE = False
 
     def check_events(self):
-        # resetea por frame
         self.UP_KEY = self.DOWN_KEY = self.START_KEY = self.BACK_KEY = False
-
+    
+        self.TEXT_INPUT = ""
+        self.BACKSPACE = False
+    
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:              
+            if event.type == pygame.QUIT:
                 self.running = False
                 self.playing = False
                 pygame.quit()
                 return
+    
+            if event.type == pygame.TEXTINPUT:
+                self.TEXT_INPUT += event.text
+    
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
+                if event.key == pygame.K_F11:
+                    self._toggle_fullscreen()
+                elif event.key == pygame.K_UP:
                     self.UP_KEY = True
                 elif event.key == pygame.K_DOWN:
                     self.DOWN_KEY = True
@@ -1065,8 +1160,12 @@ class Game:
                     self.START_KEY = True
                 elif event.key == pygame.K_ESCAPE:
                     self.BACK_KEY = True
+    
+                elif event.key in (pygame.K_BACKSPACE, pygame.K_DELETE):
+                    self.BACKSPACE = True
 
 
+# ===== EJECUTABLE =====
 
 if __name__ == "__main__":
     Game().run()
