@@ -103,8 +103,8 @@ class Game:
         }
         
         # ===== VIDAS =====
-        self.max_lives = 1
-        self.lives = 1
+        self.max_lives = 3
+        self.lives = 3
         
         # ===== GAMER TAG =====
         self.gamer_tag = ""
@@ -538,7 +538,6 @@ class Game:
         self.last_time = now
         self.anim_last_time = now
     
-        self.max_lives = 1
         self.lives = self.max_lives
         self.score = 0
     
