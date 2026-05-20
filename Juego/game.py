@@ -95,11 +95,11 @@ class Game:
         # ===== VARIABLES MODIFICABLES (AUTORUN / TIEMPO PARA PULSAR) =====
         self.auto_speed = 2
         self.fail_return_speed = 1.2
-        self.time_limit = 2
+        self.time_limit = 20
         
         self.level_time_limits = {
-            1: 2,  # Nivel 1
-            2: 1,  # Nivel 2
+            1: 20,  # Nivel 1
+            2: 15,  # Nivel 2
         }
         
         # ===== VIDAS =====
@@ -208,7 +208,7 @@ class Game:
         self.hand_frames = self.assets["hand"]
         self.hand_frame_idx = 0
         self.hand_timer = 0.0
-        self.hand_frame_duration = 1
+        self.hand_frame_duration = 0.10
         self.hand_active = False
         
         self.score = 0
