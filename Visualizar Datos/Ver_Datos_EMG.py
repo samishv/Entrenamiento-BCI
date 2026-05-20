@@ -14,7 +14,9 @@ if "RUTA_DINAM" not in globals():
     RUTA_DINAM = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\S17\DINAM\S17_260421_DINAM_OV_2_ME.npy"
 
 FS    = 1000                                            # Frecuencia de muestreo (Hz)
-ORDEN = 4                                               # Orden filtro Butterworth
+ORDEN = 4    
+
+PAD_EMG = 3 * FS   # 1 segundo de padding                                           # Orden filtro Butterworth
 
 FRECUENCIAS_NOTCH = [19.6, 60, 120, 180, 240, 300]      # Hz
 Q_NOTCH           = 200.0
@@ -94,7 +96,7 @@ elif dinam_data.ndim == 2:
 
 n_canales  = emg_data.shape[0]
 n_muestras = emg_data.shape[1]
-t_emg      = np.arange(n_muestras)
+t_emg      = np.linspace(0, emg_data.shape[1]/FS, n_muestras)
 
 # Eje de tiempo del dinamómetro en segundos
 n_dinam  = len(dinam_data)
@@ -117,18 +119,29 @@ def pantalla_completa(fig):
     except:
         fig.set_size_inches(19, 10.5)
         
-# def nombre_salida(ruta, sufijo):
+# def nombre_salida(ruta):
 #     CARPETA_IMGS = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\IMGS"
 #     os.makedirs(CARPETA_IMGS, exist_ok=True)          # la crea si no existe
 #     nombre = os.path.splitext(os.path.basename(ruta))[0]
-#     return os.path.join(CARPETA_IMGS, f"{nombre}_{sufijo}.svg")
+#     return os.path.join(CARPETA_IMGS, f"{nombre}.svg")
 
 def aplicar_pasabanda(emg, f_low, f_high, fs, orden):
-    sos      = butter(orden, [f_low, f_high], btype='bandpass', fs=fs, output='sos')
+    sos = butter(orden, [f_low, f_high], btype='bandpass', fs=fs, output='sos')
     filtrada = np.zeros_like(emg)
+
     for ch in range(emg.shape[0]):
-        filtrada[ch] = sosfiltfilt(sos, emg[ch])
+        filtrada[ch] = filtrar_con_padding(emg[ch], sos, PAD_EMG)
+
     return filtrada
+
+def filtrar_con_padding(canal, sos, pad):
+    inicio = canal[:pad][::-1]
+    fin    = canal[-pad:][::-1]
+
+    señal_ext = np.concatenate([inicio, canal, fin])
+    señal_filt = sosfiltfilt(sos, señal_ext)
+
+    return señal_filt[pad:pad + len(canal)]
 
 def calcular_fft(senal, fs):
     N        = len(senal)
@@ -150,8 +163,20 @@ def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
 
     fig, axes = plt.subplots(
         4, 2,
+        sharex='col',
         gridspec_kw={'width_ratios': [1, 4], 'hspace': 0.15, 'wspace': 0.08}
     )
+    
+    # ── Compartir eje Y FFT (columna 0, filas EMG) ─────────────────────
+    fft_base = axes[0, 0]
+    for i in range(1, n_canales):
+        axes[i, 0].sharey(fft_base)
+    
+    # ── Compartir eje Y señales EMG (columna 1, filas EMG) ─────────────
+    sig_base = axes[0, 1]
+    for i in range(1, n_canales):
+        axes[i, 1].sharey(sig_base)
+    
     fig.patch.set_facecolor(BG_FIG)
     fig.subplots_adjust(left=0.07, right=0.98, top=0.93, bottom=0.07)
 
@@ -211,11 +236,9 @@ def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
     fig.text(0.5, 0.005, pie, ha='center', va='bottom',
              fontsize=8, color=COLOR_LABEL, style='italic', fontweight='bold')
 
-    fig.set_size_inches(19, 10.5)    
+    fig.set_size_inches(19, 10.5)     
     
-    # === DESCOMENTAR PARA GUARDAR IMG EN RUTA
-    
-    # ruta_svg = nombre_salida(RUTA_EMG, "EMG")
+    # ruta_svg = nombre_salida(RUTA_EMG)
     # fig.savefig(ruta_svg, format='svg', bbox_inches='tight',
     #             facecolor=fig.get_facecolor())
     # print(f"\n  Figura guardada en: {ruta_svg}")
@@ -230,13 +253,17 @@ def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
 
 print("\n  Etapa 1 — Filtros Notch en cascada...\n")
 emg_notch = np.zeros_like(emg_data, dtype=np.float64)
+
 for ch in range(n_canales):
     resultado = emg_data[ch].astype(np.float64)
+
     for f in FRECUENCIAS_NOTCH:
         if 0 < f < FS / 2:
-            b, a      = iirnotch(f, Q_NOTCH, fs=FS)
-            sos       = tf2sos(b, a)
-            resultado = sosfiltfilt(sos, resultado)
+            b, a = iirnotch(f, Q_NOTCH, fs=FS)
+            sos  = tf2sos(b, a)
+
+            resultado = filtrar_con_padding(resultado, sos, PAD_EMG)
+
     emg_notch[ch] = resultado
     print(f"    Canal {ch+1}: OK  ({FRECUENCIAS_NOTCH} Hz eliminados)")
 

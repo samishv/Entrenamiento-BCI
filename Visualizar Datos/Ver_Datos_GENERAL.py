@@ -3,15 +3,15 @@ import runpy
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-plt.close('all')
+#plt.close('all')
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN
 # ─────────────────────────────────────────────────────────────────────────────
 
-BASE_DIR   = Path(r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC")
-SUJETO     = "S5"                                              # S17, S18
-PRUEBA     = "OK"                                               # OV, OK, CV, CK
+BASE_DIR   = Path(r"C:\Users\ikerf\Desktop\Upiita\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2")
+SUJETO     = "S4"                                              # S17, S18
+PRUEBA     = "CV"                                               # OV, OK, CV, CK
 MOVIMIENTO = "ME"                                               # ME, MI, RE
 
 PLOT_EEG_SCRIPT       = "Ver_Datos_EEG.py"

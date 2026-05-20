@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import mne
 from mne.viz import plot_topomap
 
-df = pd.read_excel("datosCMC2.xlsx")
-metrica = "Area Gamma M" 
+df = pd.read_excel("datosCMC3xlsx.xlsx")
+metrica = "Area Mu S" 
 sujetos = df["sujeto"].unique()
 musculos = df["musculo"].unique()
 
@@ -54,7 +54,7 @@ for a, m in enumerate(musculos):
             info,
             axes=axes[a, i],
             extrapolate='local',
-            contours=0,
+            contours=4,
             sensors=True,
             cmap='viridis',
             vlim=(vmin, vmax),
