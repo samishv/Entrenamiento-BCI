@@ -6,12 +6,12 @@ from mne.viz import plot_topomap
 from datetime import datetime
 
 ahora = datetime.now()
-df = pd.read_excel("datosCMC3xlsx.xlsx")
-metricas = ["Area Beta G", "Area Gamma G", "Area Mu G", "Max Beta G", "Max Gamma G", "Max Mu G", "Area Beta S", "Area Gamma S", "Area Mu S", "Max Beta S", "Max Gamma S", "Max Mu S", "Area Beta M", "Area Gamma M", "Area Mu M", "Max Beta M", "Max Gamma M", "Max Mu M"]  # Puedes agregar más métricas aquí
+df = pd.read_excel("metricas_CMC.xlsx")
+metricas = ["Area_Beta", "Area_Gamma", "Area_Mu", "Max_Beta", "Max_Gamma", "Max_Mu", "Area_Beta_S", "Area_Gamma_S", "Area_Mu_S", "Max_Beta_S", "Max_Gamma_S", "Max_Mu_S", "Area_Beta_M", "Area_Gamma_M", "Area_Mu_M", "Max_Beta_M", "Max_Gamma_M", "Max_Mu_M"]  # Puedes agregar más métricas aquí
 
 for metrica in metricas:
-    sujetos = df["sujeto"].unique()
-    musculos = df["musculo"].unique()
+    sujetos = df["Sujeto"].unique()
+    musculos = df["Musculo"].unique()
 
     # rango global (para comparar colores correctamente)
     vmin = df[metrica].min()
@@ -31,8 +31,8 @@ for metrica in metricas:
         for i, s in enumerate(sujetos):
 
             subset = df[
-                (df["sujeto"] == s) &
-                (df["musculo"] == m)
+                (df["Sujeto"] == s) &
+                (df["Musculo"] == m)
             ]
 
             if subset.empty:
@@ -41,7 +41,7 @@ for metrica in metricas:
                 continue
 
             valores = subset[metrica].values
-            canales = subset["canal eeg"].values
+            canales = subset["Canal_EEG"].values
 
             # limpiar nombres si aún tienen sufijos
             canales = [c.split("-")[0] for c in canales]
