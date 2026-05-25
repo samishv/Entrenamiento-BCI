@@ -3,80 +3,84 @@ import numpy as np
 import matplotlib.pyplot as plt
 import mne
 from mne.viz import plot_topomap
+from datetime import datetime
 
+ahora = datetime.now()
 df = pd.read_excel("datosCMC3xlsx.xlsx")
-metrica = "Area Mu S" 
-sujetos = df["sujeto"].unique()
-musculos = df["musculo"].unique()
+metricas = ["Area Beta G", "Area Gamma G", "Area Mu G", "Max Beta G", "Max Gamma G", "Max Mu G", "Area Beta S", "Area Gamma S", "Area Mu S", "Max Beta S", "Max Gamma S", "Max Mu S", "Area Beta M", "Area Gamma M", "Area Mu M", "Max Beta M", "Max Gamma M", "Max Mu M"]  # Puedes agregar más métricas aquí
 
-# rango global (para comparar colores correctamente)
-vmin = df[metrica].min()
-vmax = df[metrica].max()
+for metrica in metricas:
+    sujetos = df["sujeto"].unique()
+    musculos = df["musculo"].unique()
 
-fig, axes = plt.subplots(len(musculos), len(sujetos), figsize=(5 * len(sujetos), 4 * len(musculos)))
+    # rango global (para comparar colores correctamente)
+    vmin = df[metrica].min()
+    vmax = df[metrica].max()
 
-# Asegurar que axes siempre sea 2D
-if len(musculos) == 1 and len(sujetos) == 1:
-    axes = np.array([[axes]])
-elif len(musculos) == 1:
-    axes = axes[np.newaxis, :]
-elif len(sujetos) == 1:
-    axes = axes[:, np.newaxis]
+    fig, axes = plt.subplots(len(musculos), len(sujetos), figsize=(5 * len(sujetos), 4 * len(musculos)))
 
-for a, m in enumerate(musculos):
-    for i, s in enumerate(sujetos):
+    # Asegurar que axes siempre sea 2D
+    if len(musculos) == 1 and len(sujetos) == 1:
+        axes = np.array([[axes]])
+    elif len(musculos) == 1:
+        axes = axes[np.newaxis, :]
+    elif len(sujetos) == 1:
+        axes = axes[:, np.newaxis]
 
-        subset = df[
-            (df["sujeto"] == s) &
-            (df["musculo"] == m)
-        ]
+    for a, m in enumerate(musculos):
+        for i, s in enumerate(sujetos):
 
-        if subset.empty:
-            axes[a, i].set_title(f"(sin datos)" if a == 0 else "")
-            axes[a, i].axis("off")
-            continue
+            subset = df[
+                (df["sujeto"] == s) &
+                (df["musculo"] == m)
+            ]
 
-        valores = subset[metrica].values
-        canales = subset["canal eeg"].values
+            if subset.empty:
+                axes[a, i].set_title(f"(sin datos)" if a == 0 else "")
+                axes[a, i].axis("off")
+                continue
 
-        # limpiar nombres si aún tienen sufijos
-        canales = [c.split("-")[0] for c in canales]
+            valores = subset[metrica].values
+            canales = subset["canal eeg"].values
 
-        info = mne.create_info(
-            ch_names=list(canales),
-            sfreq=256,
-            ch_types='eeg'
-        )
-        info.set_montage('standard_1020')
+            # limpiar nombres si aún tienen sufijos
+            canales = [c.split("-")[0] for c in canales]
 
-        im, _ = plot_topomap(
-            valores,
-            info,
-            axes=axes[a, i],
-            extrapolate='local',
-            contours=4,
-            sensors=True,
-            cmap='viridis',
-            vlim=(vmin, vmax),
-            show=False
-        )
+            info = mne.create_info(
+                ch_names=list(canales),
+                sfreq=256,
+                ch_types='eeg'
+            )
+            info.set_montage('standard_1020')
 
-        # Título solo en la primera fila
-        if a == 0:
-            axes[a, i].set_title(f"{s}", fontsize=12)
-        else:
-            axes[a, i].set_title("")
+            im, _ = plot_topomap(
+                valores,
+                info,
+                axes=axes[a, i],
+                extrapolate='local',
+                contours=4,
+                sensors=True,
+                cmap='viridis',
+                vlim=(vmin, vmax),
+                show=False
+            )
 
-        # Etiqueta de músculo solo en la primera columna
-        if i == 0:
-            axes[a, i].set_ylabel(f"{m}", fontsize=12, labelpad=10)
+            # Título solo en la primera fila
+            if a == 0:
+                axes[a, i].set_title(f"{s}", fontsize=12)
+            else:
+                axes[a, i].set_title("")
 
-plt.suptitle(metrica, fontsize=14, y=1.01)
+            # Etiqueta de músculo solo en la primera columna
+            if i == 0:
+                axes[a, i].set_ylabel(f"{m}", fontsize=12, labelpad=10)
 
-# Una sola barra de color para todos
-fig.colorbar(im, ax=axes, orientation='vertical', fraction=0.05)
+    plt.suptitle(metrica, fontsize=14, y=1.01)
 
-# Guardar
-plt.savefig(f"topomap_{metrica.replace(' ', '_')}.png", dpi=300, bbox_inches='tight')
+    # Una sola barra de color para todos
+    fig.colorbar(im, ax=axes, orientation='vertical', fraction=0.05)
 
-plt.show()
+    # Guardar
+    plt.savefig(f"topomap_{metrica.replace(' ', '_')}_{ahora.strftime('%y-%m-%d_%H-%M')}.png", dpi=300, bbox_inches='tight')
+
+    #plt.show()
