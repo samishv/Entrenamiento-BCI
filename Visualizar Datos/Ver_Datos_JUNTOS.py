@@ -1,8 +1,19 @@
 import os
+import re
 import numpy as np
 import matplotlib.pyplot as plt
-import pywt
-from scipy.signal import iirnotch, butter, tf2sos, sosfiltfilt
+
+from Procesamiento_Funciones import (
+    aplicar_notch_multiple,
+    aplicar_pasabanda_butter,
+    cargar_npy_emg,
+    cargar_npy_dinam,
+    resamplear_por_promedio,
+    resamplear_profesional,
+    aplicar_wavelet_dwt_multicanal,
+    rectificar_senal,
+    ica_eliminar_componente,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN
@@ -17,12 +28,26 @@ if "RUTA_EMG" not in globals():
 if "RUTA_DINAM" not in globals():
     RUTA_DINAM = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\S17\DINAM\S17_260421_DINAM_OV_2_ME.npy"
 
-FS_EEG = 250
-FS_EMG = 1000
-ORDEN  = 4
+FS_EEG      = 250
+FS_EMG      = 1000
+BP_ORDER    = 4
 
-FRECUENCIAS_NOTCH = [19.6, 60, 120, 180, 240, 300]
-Q_NOTCH           = 200.0
+FREQS_NOTCH_EEG = (60.0, 120.0)
+FREQS_NOTCH_EMG = [19.6, 60, 120, 180, 240, 300]
+Q_NOTCH_EEG     = 5
+Q_NOTCH_EMG     = 200
+
+PAD_EEG = FS_EEG*5
+PAD_EMG = FS_EMG*5
+
+WAVELET =       'db4'
+LEVEL =         6
+NIVELES_CERO =  [1, 6]     # D6 y D1
+REMOVE_APPROX = True       # A6
+WAVE_MODE =     'reflect'
+
+IC_TO_REMOVE =  0          # IC0
+BP_ORDER =      3     
 
 CANALES_EEG = ['Fz', 'FC3', 'FCz', 'FC4', 'Cz', 'C3', 'C4']
 MUSCULOS    = ["FCU", "ECRL", "ECU"]
@@ -76,60 +101,143 @@ emg   = cargar_npy(RUTA_EMG,   "EMG")
 dinam = cargar_npy(RUTA_DINAM, "DINAM")
 
 t_eeg = np.arange(eeg.shape[1])  / FS_EEG
-t_emg = np.arange(emg.shape[1])  / FS_EMG
+t_emg = np.linspace(0, 10, int(FS_EMG*10 / 4))
 t_din = np.linspace(0, emg.shape[1] / FS_EMG, dinam.shape[0])
 tmax  = min(t_eeg[-1], t_emg[-1], t_din[-1])
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PROCESAMIENTO EEG
-#   Etapa 1 — Reducción de artefactos de parpadeo con DWT (db4, nivel 5)
-#   Etapa 2 — Filtro pasa banda Butterworth 4° orden  8–45 Hz
 # ─────────────────────────────────────────────────────────────────────────────
 
-def reducir_parpadeo_dwt(senal, wavelet='db4', nivel=5):
-    """Elimina el detalle de nivel 5 (artefactos de parpadeo) y reconstruye."""
-    coefs = pywt.wavedec(senal, wavelet, level=nivel)
-    coefs[1] = np.zeros_like(coefs[1])          # detalle nivel 5 → cero
-    return pywt.waverec(coefs, wavelet)[:len(senal)]
+def procesar_eeg(
+        eeg_raw,
+        fs,
+        ruta_npy=None,
+        canales=None,
+        freqs_notch=(60, 120),
+        q_notch=5,
+        pad=0,
+        wavelet='db4',
+        level=6,
+        niveles_cero=(1, 6),
+        remove_approx=True,
+        wave_mode='symmetric',
+        ic_to_remove=0,
+        f_low=8,
+        f_high=45,
+        bp_order=4
+    ):
 
-def procesar_eeg(eeg_raw, fs, orden=ORDEN):
-    sos_bp = butter(orden, [8.0, 45.0], btype='bandpass', fs=fs, output='sos')
-    out = np.zeros_like(eeg_raw, dtype=np.float64)
-    for ch in range(eeg_raw.shape[0]):
-        sin_parpadeo = reducir_parpadeo_dwt(eeg_raw[ch].astype(np.float64))
-        out[ch]      = sosfiltfilt(sos_bp, sin_parpadeo)
-    return out
+    datos = eeg_raw.astype(np.float64).copy()
+
+    # 1) NOTCH 60 y 120 Hz
+    datos = aplicar_notch_multiple(datos,fs=fs,freqs=freqs_notch,Q=q_notch,pad=pad)
+
+    # 2) WAVELET
+    datos = aplicar_wavelet_dwt_multicanal(datos,wavelet=wavelet,level=level,niveles_cero=niveles_cero,remove_approx=remove_approx,pad=pad,mode=wave_mode)
+
+    # 3) ICA SOLO S5
+    if ruta_npy is not None:
+        es_s5 = bool(
+            re.search(r'(^|[\\/])S5([\\/]|_)',ruta_npy,flags=re.IGNORECASE))
+
+        if es_s5:
+            datos, _ = ica_eliminar_componente(datos,fs=fs,ch_names=canales,ic_to_remove=ic_to_remove)
+
+    # 4) PASA BANDA
+    datos = aplicar_pasabanda_butter(datos,fs=fs,f_low=f_low,f_high=f_high,orden=bp_order,pad=pad)
+
+    return datos
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PROCESAMIENTO EMG
-#   Etapa 1 — Filtros Notch en cascada
-#   Etapa 2 — Filtro pasa banda Butterworth 4° orden  10–450 Hz
-#   Etapa 3 — Rectificación (valor absoluto)
-#   Etapa 4 — Envolvente: filtro pasa bajas Butterworth 2° orden  4 Hz
 # ─────────────────────────────────────────────────────────────────────────────
 
-def procesar_emg(emg_raw, fs, freqs_notch=FRECUENCIAS_NOTCH, q=Q_NOTCH, orden=ORDEN):
-    sos_bp  = butter(orden, [20.0, 150.0], btype='bandpass', fs=fs, output='sos')
-    sos_lp  = butter(orden-2, 3.0,         btype='low',      fs=fs, output='sos')
-    env = np.zeros_like(emg_raw, dtype=np.float64)
-    rect = np.zeros_like(emg_raw, dtype=np.float64)
-    for ch in range(emg_raw.shape[0]):
-        senal = emg_raw[ch].astype(np.float64)
-        for f in freqs_notch:
-            if 0 < f < fs / 2:
-                b, a  = iirnotch(f, q, fs=fs)
-                senal = sosfiltfilt(tf2sos(b, a), senal)
-        senal      = sosfiltfilt(sos_bp, senal)
-        senal      = np.abs(senal)
-        rect[ch]   = senal                     
-        env[ch]    = sosfiltfilt(sos_lp, senal)
-    return env, rect      
+def procesar_emg(
+        emg_raw,
+        fs,
+        freqs_notch=(60, 120),
+        q_notch=5,
+        pad=0,
+        factor_resample=4,
+        usar_resample_profesional=False,
+        fs_original=1000,
+        fs_nueva=250,
+        wavelet='db4',
+        level=6,
+        niveles_cero=(1, 6),
+        remove_approx=True,
+        wave_mode='symmetric',
+        f_low=20,
+        f_high=150,
+        orden_bp=4,
+        tipo_rect='completa'
+    ):
+
+    emg_proc = emg_raw.astype(np.float64).copy()
+
+    # 1) NOTCHS
+    emg_proc = aplicar_notch_multiple(emg_proc,fs=fs,freqs=tuple(freqs_notch),Q=q_notch,pad=pad)
+
+    # 2) RESAMPLEO
+    if usar_resample_profesional:
+        emg_proc = resamplear_profesional(emg_proc,fs_original,fs_nueva)
+        fs_out = fs_nueva
+
+    else:
+        emg_proc = resamplear_por_promedio(emg_proc,factor_resample)
+        fs_out = fs / factor_resample
+
+    # 3) WAVELET
+    emg_proc = aplicar_wavelet_dwt_multicanal(emg_proc,wavelet=wavelet,level=level,niveles_cero=niveles_cero,remove_approx=remove_approx,pad=pad,mode=wave_mode)
+
+    # 4) PASA BANDA
+    emg_proc = aplicar_pasabanda_butter(emg_proc,fs=fs_out,f_low=f_low,f_high=f_high,orden=orden_bp,pad=pad)
+
+    # 5) RECTIFICACIÓN
+    emg_final = rectificar_senal(emg_proc,tipo=tipo_rect)
+
+    return emg_final, fs_out    
 
 print("\n  Procesando señales EEG...")
-eeg_proc = procesar_eeg(eeg, FS_EEG)
+eeg_proc = procesar_eeg(
+    eeg_raw=eeg,
+    fs=FS_EEG,
+    ruta_npy=RUTA_EEG,
+    canales=CANALES_EEG,
+    freqs_notch=FREQS_NOTCH_EEG,
+    q_notch=Q_NOTCH_EEG,
+    pad=PAD_EEG,
+    wavelet=WAVELET,
+    level=LEVEL,
+    niveles_cero=NIVELES_CERO,
+    remove_approx=REMOVE_APPROX,
+    wave_mode=WAVE_MODE,
+    ic_to_remove=IC_TO_REMOVE,
+    f_low=8,
+    f_high=45,
+    bp_order=BP_ORDER
+)
 
 print("  Procesando señales EMG...")
-emg_proc, emg_rect = procesar_emg(emg, FS_EMG)
+emg_rect, FS_emg = procesar_emg(
+    emg_raw=emg,
+    fs=FS_EMG,
+    freqs_notch=FREQS_NOTCH_EMG,
+    q_notch=Q_NOTCH_EMG,
+    pad=PAD_EMG,
+    factor_resample=4,
+    usar_resample_profesional=False,
+    wavelet=WAVELET,
+    level=LEVEL,
+    niveles_cero=NIVELES_CERO,
+    remove_approx=REMOVE_APPROX,
+    wave_mode=WAVE_MODE,
+    f_low=5,
+    f_high=45,
+    orden_bp=BP_ORDER,
+    tipo_rect='completa'
+)
 
 print("\n  Procesamiento completado.")
 
@@ -174,7 +282,7 @@ emg_ylim = np.max(np.abs(emg_rect)) * 1.1
 
 fig, axes = plt.subplots(10, 1, sharex=True)
 fig.patch.set_facecolor(BG_FIG)
-fig.subplots_adjust(left=0.06, right=0.99, top=0.93, bottom=0.06, hspace=0.08)
+fig.subplots_adjust(left=0.05, right=0.975, top=0.96, bottom=0.06)
 
 fig.suptitle("EEG · EMG — Señales Procesadas",
              color=COLOR_TITLE, fontsize=11, fontweight='bold')
@@ -192,13 +300,13 @@ for i in range(7):
     ax.set_ylim(eeg_ymin, eeg_ymax)
 
 # EMG (canales 0–2, filas 7–9)
-for j in range(min(3, emg_proc.shape[0])):
+for j in range(min(3, emg_rect.shape[0])):
     ax = axes[7 + j]
     estilo_ax(ax)
     ax.plot(t_emg, emg_rect[j], color='#d7d7d7',
             linewidth=0.5, alpha=0.5)                          # señal rectificada
-    ax.plot(t_emg, emg_proc[j], color=COLORES_EMG[j] if j < len(COLORES_EMG) else "#99b2ff",
-            linewidth=1.5)                                      # envolvente
+    # ax.plot(t_emg, emg_proc[j], color=COLORES_EMG[j] if j < len(COLORES_EMG) else "#99b2ff",
+    #         linewidth=1.5)                                      # envolvente
     ax.set_ylabel(MUSCULOS[j] if j < len(MUSCULOS) else f"EMG{j+1}", color=COLOR_LABEL, fontsize=8)
     ax.set_xlim(0, tmax)
     ax.set_ylim(0, emg_ylim)

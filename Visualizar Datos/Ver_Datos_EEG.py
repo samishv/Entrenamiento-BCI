@@ -17,7 +17,7 @@ from Procesamiento_Funciones import (
 # ─────────────────────────────────────────────────────────────────────────────
 
 if "RUTA_NPY" not in globals():
-    RUTA_NPY = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\S17\EEG\S17_260421_EEG_OV_2_ME.npy"
+    RUTA_NPY = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2\S5\EEG\S5_260429_EEG_OV_1_ME.npy"
 
 FS = 250
 
@@ -37,6 +37,7 @@ FIGURAS = [
     # ('Gamma γ',        30.0,  45.0),
     # ('μ + β',           8.0,  30.0),
     ('μ + β + γ',       8.0,  45.0),
+    # ('Preprocesamiento Coherencia',       5.0,  45.0),
 ]
 
 BANDAS = {

@@ -4,7 +4,8 @@ from pathlib import Path
 
 # ====== CONFIGURAME ESTA ======
 
-BASE_DIR    = Path(r"C:\Users\ikerf\Desktop\Upiita\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2")
+# BASE_DIR    = Path(r"C:\Users\ikerf\Desktop\Upiita\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2")
+BASE_DIR    = Path(r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2")
 SUJETO      = "S18"
 SEG_INICIO  = 1  
 SEG_UTILES  = 10    

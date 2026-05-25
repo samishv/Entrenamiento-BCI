@@ -6,12 +6,12 @@ plt.close('all')
 
 # %% Parámetros
 
-fs = 250
+fs = 1000
 level = 6
 wavelet_mom = 'db4'
 
-ruta = r"D:\luiso\Descargas\RegistrosCMC\RegistrosCMC\S5\EEG\S5_260323_EEG_OV_1_ME.npy"
-FACTORES = [0.0, 0.0, 0.0, 0.0, 2.0, 2.0]
+ruta = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2\S5\EMG\S5_260429_EMG_OV_1_ME.npy"
+FACTORES = [1.5, 1.5, 0.0, 0.0, 0.0, 1.5]
 #          [ D6,  D5,  D4,  D3,  D2,  D1]
 
 # ruta = r"D:\luiso\Descargas\RegistrosCMC\RegistrosCMC\S5\EEG\S5_260323_EEG_CK_1_MI.npy"
@@ -19,7 +19,7 @@ FACTORES = [0.0, 0.0, 0.0, 0.0, 2.0, 2.0]
 #          [ D6,  D5,  D4,  D3,  D2,  D1]
 
 signal = np.load(ruta)
-signal = signal[:250*28][0]
+signal = signal[0][:1000*2]
 
 N = len(signal)
 t = np.arange(N) / fs

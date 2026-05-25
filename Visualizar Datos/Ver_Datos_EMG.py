@@ -1,59 +1,77 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import iirnotch, butter, tf2sos, sosfiltfilt
+
+from Procesamiento_Funciones import (
+    aplicar_notch_multiple,
+    aplicar_pasabanda_butter,
+    cargar_npy_emg,
+    cargar_npy_dinam,
+    resamplear_por_promedio,
+    resamplear_profesional,
+    aplicar_wavelet_dwt_multicanal,
+    rectificar_senal,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURACIÓN
 # ─────────────────────────────────────────────────────────────────────────────
 
 if "RUTA_EMG" not in globals():
-    RUTA_EMG   = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\S17\EMG\S17_260421_EMG_OV_2_ME.npy"
+    RUTA_EMG = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2\S5\EMG\S5_260429_EMG_OV_1_ME.npy"
+    # RUTA_EMG = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2\S18\EMG\S18_260429_EMG_OV_1_ME.npy"
 
 if "RUTA_DINAM" not in globals():
-    RUTA_DINAM = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\S17\DINAM\S17_260421_DINAM_OV_2_ME.npy"
+    RUTA_DINAM = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2\S5\DINAM\S5_260429_DINAM_OV_1_ME.npy"
+    # RUTA_DINAM = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2\S18\DINAM\S18_260429_DINAM_OV_1_ME.npy"
 
-FS    = 1000                                            # Frecuencia de muestreo (Hz)
-ORDEN = 4    
+FS = 1000                 # Frecuencia de muestreo EMG (Hz)
+ORDEN_BP = 3              # Orden Butterworth
+PAD_MUESTRAS = 5 * FS     # Padding reflect (muestras). 3 s
 
-PAD_EMG = 3 * FS   # 1 segundo de padding                                           # Orden filtro Butterworth
-
-FRECUENCIAS_NOTCH = [19.6, 60, 120, 180, 240, 300]      # Hz
-Q_NOTCH           = 200.0
+FREQS_NOTCH = [19.6, 60, 120, 180, 240, 300]  # Hz
+Q_NOTCH = 200
 
 FIGURAS = [
-    ('EMG Completo',      10.0, 450.0),
-    # ('Energía Dominante', 20.0, 150.0),
+    # ("EMG Completo", 10, 450.0),
+    # ("EMG Completo RESAMPLED", 2.0, 113.0),
+    ("EMG Completo COHERENCIA", 5.0, 45.0),
 ]
 
 MUSCULOS = ["FCU", "ECRL", "ECU"]
-
 COLORES_EMG = ["#99b2ff", "#90c7db", "#b0dfa9"]
 COLOR_DINAM = "#fefb6e"
 
-BG_FIG      = '#0a0a0a'
-BG_AX       = '#0d0d0d'
-COLOR_GRID  = '#404040'
-COLOR_TICK  = '#a5a5a5'
-COLOR_LABEL = '#d1d1d1'
-COLOR_TITLE = '#ffffff'
+BG_FIG = "#0a0a0a"
+BG_AX = "#0d0d0d"
+COLOR_GRID = "#404040"
+COLOR_TICK = "#a5a5a5"
+COLOR_LABEL = "#d1d1d1"
+COLOR_TITLE = "#ffffff"
+
+WAVELET =       'db4'
+LEVEL =         6
+NIVELES_CERO =  [1, 6]     # D6 y D1
+REMOVE_APPROX = True       # A6
+WAVE_MODE =     'reflect'
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PARSEO DE NOMBRE DE ARCHIVO
 # ─────────────────────────────────────────────────────────────────────────────
 
 CONDICION_MAP = {
-    'OV': 'Ojos Abiertos - Movimiento Visual',
-    'OK': 'Ojos Abiertos - Movimiento Cinestésico',
-    'CK': 'Ojos Cerrados - Movimiento Cinestésico',
-    'CV': 'Ojos Cerrados - Movimiento Visual',
+    "OV": "Ojos Abiertos - Movimiento Visual",
+    "OK": "Ojos Abiertos - Movimiento Cinestésico",
+    "CK": "Ojos Cerrados - Movimiento Cinestésico",
+    "CV": "Ojos Cerrados - Movimiento Visual",
 }
 
 ESTADO_MAP = {
-    'ME': 'Movimiento Ejecutado',
-    'MI': 'Movimiento Imaginado',
-    'RE': 'Reposo',
+    "ME": "Movimiento Ejecutado",
+    "MI": "Movimiento Imaginado",
+    "RE": "Reposo",
 }
+
 
 def parsear_nombre_archivo(ruta):
     nombre = os.path.splitext(os.path.basename(ruta))[0]        # 'S17_260310_EEG_CK_3_RE'
@@ -70,37 +88,6 @@ def parsear_nombre_archivo(ruta):
     return f"Sujeto {num_sujeto}  |  {desc_cond}  |  {desc_estado}"
 
 PIE_FIGURA = parsear_nombre_archivo(RUTA_DINAM)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CARGADERA DE COSAS
-# ─────────────────────────────────────────────────────────────────────────────
-
-def cargar_archivo(ruta, nombre):
-    if not os.path.exists(ruta):
-        raise FileNotFoundError(f"No se encontró: {ruta}")
-    data = np.load(ruta)
-    return data
-
-emg_data   = cargar_archivo(RUTA_EMG,   "EMG")
-dinam_data = cargar_archivo(RUTA_DINAM, "DINAMÓMETRO")
-
-if emg_data.ndim == 1:
-    emg_data = emg_data.reshape(1, -1)
-elif emg_data.shape[0] != 4 and emg_data.shape[1] == 4:
-    emg_data = emg_data.T
-
-if dinam_data.ndim == 2 and dinam_data.shape[0] != 1:
-    dinam_data = dinam_data[0]
-elif dinam_data.ndim == 2:
-    dinam_data = dinam_data.flatten()
-
-n_canales  = emg_data.shape[0]
-n_muestras = emg_data.shape[1]
-t_emg      = np.linspace(0, emg_data.shape[1]/FS, n_muestras)
-
-# Eje de tiempo del dinamómetro en segundos
-n_dinam  = len(dinam_data)
-t_dinam = np.linspace(0, emg_data.shape[1]/FS, n_dinam)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FUNCIONES
@@ -125,32 +112,6 @@ def pantalla_completa(fig):
 #     nombre = os.path.splitext(os.path.basename(ruta))[0]
 #     return os.path.join(CARPETA_IMGS, f"{nombre}.svg")
 
-def aplicar_pasabanda(emg, f_low, f_high, fs, orden):
-    sos = butter(orden, [f_low, f_high], btype='bandpass', fs=fs, output='sos')
-    filtrada = np.zeros_like(emg)
-
-    for ch in range(emg.shape[0]):
-        filtrada[ch] = filtrar_con_padding(emg[ch], sos, PAD_EMG)
-
-    return filtrada
-
-def filtrar_con_padding(canal, sos, pad):
-    inicio = canal[:pad][::-1]
-    fin    = canal[-pad:][::-1]
-
-    señal_ext = np.concatenate([inicio, canal, fin])
-    señal_filt = sosfiltfilt(sos, señal_ext)
-
-    return señal_filt[pad:pad + len(canal)]
-
-def calcular_fft(senal, fs):
-    N        = len(senal)
-    fft_vals = np.fft.rfft(senal)
-    freqs    = np.fft.rfftfreq(N, d=1.0 / fs)
-    magnitud = np.abs(fft_vals) / N
-    magnitud[1:-1] *= 2
-    return freqs, magnitud
-
 def estilo_ax(ax):
     ax.set_facecolor(BG_AX)
     ax.tick_params(colors=COLOR_TICK, labelsize=7)
@@ -158,6 +119,15 @@ def estilo_ax(ax):
     ax.spines['left'].set_color(COLOR_GRID)
     ax.spines['bottom'].set_color(COLOR_GRID)
     ax.grid(True, color=COLOR_GRID, linewidth=0.5, linestyle='--')
+
+def calcular_fft(senal: np.ndarray, fs: float):
+    N = len(senal)
+    freqs = np.fft.rfftfreq(N, d=1.0 / fs)
+    fft_vals = np.fft.rfft(senal)
+    mag = np.abs(fft_vals) / N
+    if N > 2:
+        mag[1:-1] *= 2
+    return freqs, mag
 
 def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
 
@@ -178,7 +148,7 @@ def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
         axes[i, 1].sharey(sig_base)
     
     fig.patch.set_facecolor(BG_FIG)
-    fig.subplots_adjust(left=0.07, right=0.98, top=0.93, bottom=0.07)
+    fig.subplots_adjust(left=0.05, right=0.975, top=0.96, bottom=0.06)
 
     es_ultimo_emg = n_canales - 1
 
@@ -210,8 +180,6 @@ def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
         estilo_ax(ax_sig)
         if not es_ultima_fila_emg:
             ax_sig.tick_params(labelbottom=False)
-        # else:
-        #     # ax_sig.set_xlabel("Muestras", color=COLOR_LABEL, fontsize=8)
         if i == 0:
             ax_sig.set_title("Señal filtrada  [µV]", color=COLOR_LABEL, fontsize=8, pad=3)
 
@@ -230,7 +198,7 @@ def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
 
     # Título y pie
     fig.suptitle(
-        f"{nombre}  —  Butterworth ord. {ORDEN}  |  {f_low}–{f_high} Hz  |  Fs = {fs} Hz",
+        f"{nombre}  —  Butterworth ord. {ORDEN_BP}  |  {f_low}–{f_high} Hz  |  Fs = {fs} Hz",
         color=COLOR_TITLE, fontsize=11, fontweight='bold'
     )
     fig.text(0.5, 0.005, pie, ha='center', va='bottom',
@@ -248,34 +216,72 @@ def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
     return fig
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ノッチ・レクイエム
+# PROCESAR SEÑALES
 # ─────────────────────────────────────────────────────────────────────────────
 
-print("\n  Etapa 1 — Filtros Notch en cascada...\n")
-emg_notch = np.zeros_like(emg_data, dtype=np.float64)
+# 1) Cargar
+emg_data   = cargar_npy_emg(RUTA_EMG)         # (canales x muestras)
+dinam_data = cargar_npy_dinam(RUTA_DINAM)     # (muestras,)
 
-for ch in range(n_canales):
-    resultado = emg_data[ch].astype(np.float64)
+n_canales  = emg_data.shape[0]
+n_muestras = emg_data.shape[1]
+t_emg      = np.linspace(0, emg_data.shape[1]/FS, n_muestras)
 
-    for f in FRECUENCIAS_NOTCH:
-        if 0 < f < FS / 2:
-            b, a = iirnotch(f, Q_NOTCH, fs=FS)
-            sos  = tf2sos(b, a)
+n_dinam  = len(dinam_data)
+t_dinam = np.linspace(0, emg_data.shape[1]/FS, n_dinam)
 
-            resultado = filtrar_con_padding(resultado, sos, PAD_EMG)
+# 2) Notchs en cascada
+emg_proc = aplicar_notch_multiple(
+    emg_data,
+    fs=FS,
+    freqs=tuple(FREQS_NOTCH),
+    Q=Q_NOTCH,
+    pad=PAD_MUESTRAS,
+)
+print(f"\n  [OK] Notch aplicado: {FREQS_NOTCH} Hz  |  Q={Q_NOTCH}  |  pad={PAD_MUESTRAS} muestras")
 
-    emg_notch[ch] = resultado
-    print(f"    Canal {ch+1}: OK  ({FRECUENCIAS_NOTCH} Hz eliminados)")
+# 3) Resampleo PROMEDIO
+emg_proc = resamplear_por_promedio(emg_proc,4)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PLOT MA-MA-MASIVO
-# ─────────────────────────────────────────────────────────────────────────────
+# 3) resampleo LIBRERIA
+# emg_proc = resamplear_profesional(emg_proc, 1000, 250)
 
-for idx, (nombre, f_low, f_high) in enumerate(FIGURAS, start=1):
-    print(f"\n    Generando Figura {idx}: {nombre}  ({f_low}–{f_high} Hz)...")
-    emg_filt = aplicar_pasabanda(emg_notch, f_low, f_high, FS, ORDEN)
-    plot_figura(nombre, emg_filt, dinam_data, t_emg, t_dinam,
-                f_low, f_high, FS, PIE_FIGURA)
+# 3) CONTINUACION
+FS = FS / 4  # Ahora FS pasa de 1000 a 250 Hz
+n_muestras = emg_proc.shape[1]
+t_emg = np.linspace(0, n_muestras / FS, n_muestras)
 
-print("\n  Todas las figuras EMG/DINAM generadas.\n\n")
+print(f"\n  [OK] Resampleo aplicado. Nueva FS: {FS} Hz | Muestras: {n_muestras}")
+
+# 4) WAVELETS
+emg_proc = aplicar_wavelet_dwt_multicanal(
+    emg_proc,
+    wavelet=WAVELET,
+    level=LEVEL,
+    niveles_cero=NIVELES_CERO,
+    remove_approx=REMOVE_APPROX,
+    pad=PAD_MUESTRAS,
+    mode=WAVE_MODE
+)
+print(f"  [OK] Wavelet aplicado: {WAVELET} | level={LEVEL} | cero={NIVELES_CERO} | remove A{LEVEL}={REMOVE_APPROX}")
+
+# 5) Pasa Banda y Plot
+for nombre, f_low, f_high in FIGURAS:
+    print(f"\n → Generando: {nombre} ({f_low:.1f}–{f_high:.1f} Hz)")
+
+    emg_final = aplicar_pasabanda_butter(
+        emg_proc,
+        fs=FS,
+        f_low=f_low,
+        f_high=f_high,
+        orden=ORDEN_BP,
+        pad=PAD_MUESTRAS,
+    )
+    
+    # 6) Rectificar Señales
+    emg_final = rectificar_senal(emg_final, tipo='completa')
+    
+    plot_figura(nombre, emg_final, dinam_data, t_emg, t_dinam, f_low, f_high, FS, PIE_FIGURA)
+
+print("\n  [FIN] Todas las figuras EMG/DINAM generadas.\n")
 plt.show()
