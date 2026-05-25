@@ -4,10 +4,11 @@ import pywt
 import mne
 from mne.preprocessing import ICA
 
-from scipy.signal import iirnotch, sosfiltfilt, tf2sos, butter
+from scipy.signal import iirnotch, sosfiltfilt, tf2sos, butter, resample_poly
 
 
-# %% CARGAR DATOS
+
+# %% CARGAR DATOS EEG
 
 def cargar_npy_eeg(ruta_npy: str, n_canales_esperados: int | None = None) -> np.ndarray:
     datos = np.load(ruta_npy)
@@ -18,6 +19,65 @@ def cargar_npy_eeg(ruta_npy: str, n_canales_esperados: int | None = None) -> np.
             f"Se esperaban {n_canales_esperados} canales, pero el archivo trae {datos.shape[0]} canales: {datos.shape}"
         )
     return np.asarray(datos, dtype=float)
+
+
+# %% CARGAR DATOS EMG
+
+def cargar_npy_emg(
+    ruta_npy: str,
+    n_canales_esperados: int | None = None,
+    permitir_transponer: bool = True,
+) -> np.ndarray:
+
+    datos = np.load(ruta_npy)
+
+    if datos.ndim == 1:
+        datos = datos.reshape(1, -1)
+    elif datos.ndim != 2:
+        raise ValueError(f"Se esperaba 1D o 2D para EMG. Recibido: {datos.shape}")
+
+    # Si especificas canales esperados, usamos eso para decidir transposición
+    if permitir_transponer and n_canales_esperados is not None:
+        if datos.shape[0] != n_canales_esperados and datos.shape[1] == n_canales_esperados:
+            datos = datos.T
+
+    # Si no especificas canales esperados, heurística: usualmente muestras >> canales
+    if permitir_transponer and n_canales_esperados is None:
+        if datos.shape[0] > datos.shape[1]:
+            datos = datos.T
+
+    if n_canales_esperados is not None and datos.shape[0] != n_canales_esperados:
+        raise ValueError(
+            f"Se esperaban {n_canales_esperados} canales EMG, pero el archivo trae {datos.shape[0]}: {datos.shape}"
+        )
+
+    return np.asarray(datos, dtype=float)
+
+
+# %% CARGAR DATOS DINAM
+
+def cargar_npy_dinam(
+    ruta_npy: str,
+    permitir_multicanal: bool = False,
+) -> np.ndarray:
+
+    datos = np.load(ruta_npy)
+
+    if datos.ndim == 1:
+        vec = datos
+    elif datos.ndim == 2:
+        if 1 in datos.shape:
+            vec = datos.reshape(-1)
+        else:
+            if not permitir_multicanal:
+                raise ValueError(
+                    f"DINAM debe ser 1D (o 2D con una dimensión = 1). Recibido: {datos.shape}"
+                )
+            vec = datos[0].reshape(-1)
+    else:
+        raise ValueError(f"DINAM debe ser 1D o 2D. Recibido: {datos.shape}")
+
+    return np.asarray(vec, dtype=float)
 
 
 # %% FILTRADO DE NOTCH
@@ -211,3 +271,46 @@ def aplicar_pasabanda_butter(
 
     salida = np.array([_filtrar_con_padding_reflect(canal, sos, pad) for canal in datos])
     return salida
+
+
+# %% RESAMPLEAR POR PROMEDIO
+
+def resamplear_por_promedio(senal, factor=4):
+    senal = np.asarray(senal)
+    longitud_truncada = (senal.shape[1] // factor) * factor
+    senal_resampleada = (
+        senal[:, :longitud_truncada]
+        .reshape(senal.shape[0], -1, factor)
+        .mean(axis=2)
+    )
+
+    return senal_resampleada
+
+
+# %% RESAMPLEAR POR FILTRO CHIDO
+
+def resamplear_profesional(senal, fs_original, fs_nueva):
+    gcd = np.gcd(int(fs_original), int(fs_nueva))
+    up = int(fs_nueva // gcd)
+    down = int(fs_original // gcd)
+
+    senal_resampleada = resample_poly(
+        senal,
+        up=up,
+        down=down,
+        axis=1
+    )
+
+    return senal_resampleada
+
+# %% RECTIFICAR
+
+def rectificar_senal(senal, tipo='completa'):
+    if tipo == 'completa':
+        return np.abs(senal)
+        
+    elif tipo == 'media':
+        return np.maximum(0, senal)
+        
+    else:
+        raise ValueError("El tipo de rectificación debe ser 'completa' o 'media'.")

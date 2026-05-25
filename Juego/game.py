@@ -98,8 +98,8 @@ class Game:
         self.time_limit = 20
         
         self.level_time_limits = {
-            1: 20,  # Nivel 1
-            2: 15,  # Nivel 2
+            1: 3,  # Nivel 1
+            2: 2,  # Nivel 2
         }
         
         # ===== VIDAS =====

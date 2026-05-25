@@ -13,7 +13,7 @@ from scipy.signal import welch
 # ─────────────────────────────────────────────────────────────
 plt.close("all")
 
-RUTA_NPY = r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC\S5\EEG\S5_260429_EEG_OV_1_ME.npy"
+RUTA_NPY = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2\S18\EEG\S18_260429_EEG_OK_1_ME.npy"
 
 FS = 250
 Q_NOTCH = 30

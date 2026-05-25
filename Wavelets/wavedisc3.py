@@ -7,17 +7,17 @@ plt.close('all')
 
 # %% Parámetros
 
-fs = 250
+fs = 1000
 level = 6
-wavelet_mom = 'db4'
+wavelet_mom = 'sym4'
 
-ruta = r"D:\luiso\Descargas\RegistrosCMC\RegistrosCMC\S5\EEG\S5_260323_EEG_OV_1_ME.npy"
-FACTORES = [1.5, 1.5, 0.8, 0.6, 0.0, 0.0] 
+ruta = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2\S18\EMG\S18_260429_EMG_OV_1_ME.npy"
+FACTORES = [1.5, 1.5, 0.0, 0.0, 0.0, 0.0] 
 #          [ D6,  D5,  D4,  D3,  D2,  D1]
 
 signal_original = np.load(ruta)
 signal_original = signal_original[0]
-signal_original = signal_original[0:250*10]
+signal_original = signal_original[0:1000*2]
 
 N = len(signal_original)
 t = np.arange(N) / fs
@@ -29,6 +29,12 @@ Q = 30
 
 b, a = iirnotch(w0=f0, Q=Q, fs=fs)
 signal_notch = filtfilt(b, a, signal_original)
+
+f0 = 18
+Q = 3
+
+b, a = iirnotch(w0=f0, Q=Q, fs=fs)
+signal_notch = filtfilt(b, a, signal_notch)
 
 # %% Funciones auxiliares
 
