@@ -13,6 +13,7 @@ from Procesamiento_Funciones import (
     aplicar_wavelet_dwt_multicanal,
     rectificar_senal,
     ica_eliminar_componente,
+    emg_envelope,
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -196,8 +197,14 @@ def procesar_emg(
 
     # 5) RECTIFICACIÓN
     emg_final = rectificar_senal(emg_proc,tipo=tipo_rect)
+    
+    # 6) ENVOLVENTE
+    emg_env = np.zeros_like(emg_proc)
+    for i in range(emg_proc.shape[0]):
+        emg_env[i, :] = emg_envelope(emg_proc[i, :], fs=FS_EMG, tc_ms=20, rectify="full")
 
-    return emg_final, fs_out    
+
+    return emg_final, emg_env
 
 print("\n  Procesando señales EEG...")
 eeg_proc = procesar_eeg(
@@ -220,7 +227,7 @@ eeg_proc = procesar_eeg(
 )
 
 print("  Procesando señales EMG...")
-emg_rect, FS_emg = procesar_emg(
+emg_rect, emg_env = procesar_emg(
     emg_raw=emg,
     fs=FS_EMG,
     freqs_notch=FREQS_NOTCH_EMG,
@@ -282,7 +289,7 @@ emg_ylim = np.max(np.abs(emg_rect)) * 1.1
 
 fig, axes = plt.subplots(10, 1, sharex=True)
 fig.patch.set_facecolor(BG_FIG)
-fig.subplots_adjust(left=0.05, right=0.975, top=0.96, bottom=0.06)
+fig.subplots_adjust(left=0.035, right=0.985, top=0.96, bottom=0.08)
 
 fig.suptitle("EEG · EMG — Señales Procesadas",
              color=COLOR_TITLE, fontsize=11, fontweight='bold')
@@ -305,8 +312,8 @@ for j in range(min(3, emg_rect.shape[0])):
     estilo_ax(ax)
     ax.plot(t_emg, emg_rect[j], color='#d7d7d7',
             linewidth=0.5, alpha=0.5)                          # señal rectificada
-    # ax.plot(t_emg, emg_proc[j], color=COLORES_EMG[j] if j < len(COLORES_EMG) else "#99b2ff",
-    #         linewidth=1.5)                                      # envolvente
+    ax.plot(t_emg, emg_env[j], color=COLORES_EMG[j] if j < len(COLORES_EMG) else "#99b2ff",
+            linewidth=1.5)                                      # envolvente
     ax.set_ylabel(MUSCULOS[j] if j < len(MUSCULOS) else f"EMG{j+1}", color=COLOR_LABEL, fontsize=8)
     ax.set_xlim(0, tmax)
     ax.set_ylim(0, emg_ylim)
@@ -321,6 +328,11 @@ ax.set_xlabel("Tiempo [s]", color=COLOR_LABEL, fontsize=8)
 ax.set_xlim(0, tmax)
 
 fig.set_size_inches(19, 10.5) 
+
+# Asegurar tick labels solo en la última fila
+for i in range(9):
+    plt.setp(axes[i].get_xticklabels(), visible=False)
+plt.setp(axes[9].get_xticklabels(), visible=True, color=COLOR_TICK)
 
 # === DESCOMENTAR PARA GUARDAR IMG EN RUTA
 
