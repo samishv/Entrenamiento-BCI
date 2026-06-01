@@ -139,8 +139,9 @@ def estilo_ax(ax):
     ax.set_facecolor(BG_AX)
     ax.tick_params(colors=COLOR_TICK, labelsize=7)
     ax.spines[['top', 'right']].set_visible(False)
-    ax.spines['left'].set_color('#30363d')
-    ax.spines['bottom'].set_color('#30363d')
+    ax.spines['left'].set_color(COLOR_GRID)
+    ax.spines['bottom'].set_color(COLOR_GRID)
+    ax.grid(True, color=COLOR_GRID, linewidth=0.5, linestyle='--')
 
 def plot_bandas_psd(ax, psd_max, f_low, f_high, etiquetas=False):
     for nombre, (b_ini, b_fin, bc) in BANDAS.items():
@@ -159,7 +160,7 @@ def plot_figura(nombre_fig, datos_filt, f_low, f_high, tiempo, fs, nperseg, colo
         gridspec_kw={'width_ratios': [3,1], 'hspace': 0.15, 'wspace': 0.08}
     )
     fig.patch.set_facecolor(BG_FIG)
-    fig.subplots_adjust(left=0.05, right=0.975, top=0.96, bottom=0.06)
+    fig.subplots_adjust(left=0.035, right=0.985, top=0.96, bottom=0.08)
     
     fig.set_size_inches(19, 10.5) 
 
@@ -189,12 +190,10 @@ def plot_figura(nombre_fig, datos_filt, f_low, f_high, tiempo, fs, nperseg, colo
         # Tiempo
         ax_t.plot(tiempo, datos_filt[i], color=colores[i], linewidth=0.8)
         ax_t.set_ylabel(canales[i], color=COLOR_LABEL, fontsize=8)
-        ax_t.set_xlim(tiempo[0], tiempo[-1]) # Evita espacios vacíos a los lados
-        ax_t.set_ylim(y_min_fig - margen_fig, y_max_fig + margen_fig) # <--- FIX TIEMPO
+        ax_t.set_xlim(tiempo[0], tiempo[-1])
+        ax_t.set_ylim(y_min_fig - margen_fig, y_max_fig + margen_fig)
         
-        if i < 6:
-            ax_t.set_xticklabels([])
-        else:
+        if i == 6:
             ax_t.set_xlabel("Tiempo (s)", color=COLOR_LABEL, fontsize=8)
         
         freqs, psd = psds[i]
@@ -202,10 +201,17 @@ def plot_figura(nombre_fig, datos_filt, f_low, f_high, tiempo, fs, nperseg, colo
         ax_p.set_xlim(0, max(45, f_high) + 8)
         ax_p.set_ylim(0, psd_max_global * 1.15)
         
-        if i < 6:
-            ax_p.set_xticklabels([])
-        else:
+        if i == 6:
             ax_p.set_xlabel("Frecuencia (Hz)", color=COLOR_LABEL, fontsize=8)
+    
+    # Ocultar tick labels en filas intermedias DESPUÉS de dibujar todo
+    for i in range(6):           # filas 0–5
+        plt.setp(axes[i, 0].get_xticklabels(), visible=False)
+        plt.setp(axes[i, 1].get_xticklabels(), visible=False)
+    
+    # Asegurar que la fila 6 sí los muestre
+    plt.setp(axes[6, 0].get_xticklabels(), visible=True, color=COLOR_TICK)
+    plt.setp(axes[6, 1].get_xticklabels(), visible=True, color=COLOR_TICK)
 
     for i in range(7):
         ax_p = axes[i, 1]
@@ -268,4 +274,5 @@ for (nombre, f_low, f_high) in FIGURAS:
     plot_figura(nombre, datos_filt, f_low, f_high, tiempo, FS, NPERSEG, COLORES, CANALES, PIE_FIGURA)
 
 print("\n  [FIN] Todas las figuras EEG generadas.\n")
+
 plt.show()

@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 from Procesamiento_Funciones import (
     aplicar_notch_multiple,
@@ -11,6 +12,7 @@ from Procesamiento_Funciones import (
     resamplear_profesional,
     aplicar_wavelet_dwt_multicanal,
     rectificar_senal,
+    emg_envelope,
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -131,88 +133,99 @@ def calcular_fft(senal: np.ndarray, fs: float):
 
 def plot_figura(nombre, emg_filt, dinam, t_e, t_d, f_low, f_high, fs, pie):
 
-    fig, axes = plt.subplots(
-        4, 2,
-        sharex='col',
-        gridspec_kw={'width_ratios': [1, 4], 'hspace': 0.15, 'wspace': 0.08}
-    )
-    
-    # ── Compartir eje Y FFT (columna 0, filas EMG) ─────────────────────
-    fft_base = axes[0, 0]
-    for i in range(1, n_canales):
-        axes[i, 0].sharey(fft_base)
-    
-    # ── Compartir eje Y señales EMG (columna 1, filas EMG) ─────────────
-    sig_base = axes[0, 1]
-    for i in range(1, n_canales):
-        axes[i, 1].sharey(sig_base)
-    
+    fig = plt.figure()
     fig.patch.set_facecolor(BG_FIG)
-    fig.subplots_adjust(left=0.05, right=0.975, top=0.96, bottom=0.06)
 
-    es_ultimo_emg = n_canales - 1
+    gs = gridspec.GridSpec(
+        4, 2,
+        width_ratios=[1, 4],
+        hspace=0.15, wspace=0.08,
+        left=0.035, right=0.985, top=0.96, bottom=0.08
+    )
+
+    # ── Columna 0: FFT — filas 0-2 comparten X e Y; fila 3 independiente ──
+    ax_fft0 = fig.add_subplot(gs[0, 0])
+    ax_fft1 = fig.add_subplot(gs[1, 0], sharex=ax_fft0, sharey=ax_fft0)
+    ax_fft2 = fig.add_subplot(gs[2, 0], sharex=ax_fft0, sharey=ax_fft0)
+    ax_fft3 = fig.add_subplot(gs[3, 0])   # independiente, se ocultará
+
+    # ── Columna 1: señales — filas 0-2 comparten X e Y entre sí; independiente de col 0
+    ax_sig0 = fig.add_subplot(gs[0, 1])
+    ax_sig1 = fig.add_subplot(gs[1, 1], sharex=ax_sig0, sharey=ax_sig0)
+    ax_sig2 = fig.add_subplot(gs[2, 1], sharex=ax_sig0, sharey=ax_sig0)
+    ax_din  = fig.add_subplot(gs[3, 1], sharex=ax_sig0)   # dinamómetro, independiente
+
+    axes = np.array([
+        [ax_fft0, ax_sig0],
+        [ax_fft1, ax_sig1],
+        [ax_fft2, ax_sig2],
+        [ax_fft3, ax_din ],
+    ])
+
+    fig.set_size_inches(19, 10.5)
 
     for i in range(n_canales):
         ax_fft = axes[i, 0]
         ax_sig = axes[i, 1]
         color  = COLORES_EMG[i]
-        es_ultima_fila_emg = (i == es_ultimo_emg)
 
-        # ── Label del músculo en la columna FFT ───────────────────────────
+        # ── Label del músculo ─────────────────────────────────────────────
         ax_fft.set_ylabel(MUSCULOS[i], color=color, fontsize=9,
-                          rotation=0, labelpad=32, va='center')
+                          rotation=90, labelpad=12, va='center')
 
         # ── FFT (columna izquierda) ───────────────────────────────────────
         freqs, mag = calcular_fft(emg_filt[i], fs)
         ax_fft.plot(freqs, mag, color=color, linewidth=0.75, alpha=0.92)
         ax_fft.set_xlim(0, fs / 2)
         estilo_ax(ax_fft)
-        if not es_ultima_fila_emg:
-            ax_fft.tick_params(labelbottom=False)
-        else:
-            ax_fft.set_xlabel("Frecuencia [Hz]", color=COLOR_LABEL, fontsize=8)
         if i == 0:
             ax_fft.set_title("FFT  [|X(f)|]", color=COLOR_LABEL, fontsize=8, pad=3)
 
         # ── Señal procesada (columna derecha) ─────────────────────────────
         ax_sig.plot(t_e, emg_filt[i], color=color, linewidth=0.75, alpha=0.92)
-        ax_sig.set_xlim(0, len(t_e) - 1)
+        ax_sig.set_xlim(t_e[0], t_e[-1])
         estilo_ax(ax_sig)
-        if not es_ultima_fila_emg:
-            ax_sig.tick_params(labelbottom=False)
         if i == 0:
             ax_sig.set_title("Señal filtrada  [µV]", color=COLOR_LABEL, fontsize=8, pad=3)
 
-    # ── Fila 4 col 0: vacío ───────────────────────────────────────────────
+    # ── Ocultar filas intermedias (sin sharex que interfiera) ────────────
+    for i in range(n_canales - 1):
+        plt.setp(axes[i, 0].get_xticklabels(), visible=False)
+        plt.setp(axes[i, 1].get_xticklabels(), visible=False)
+
+    # ── Última fila EMG: mostrar labels y xlabel ──────────────────────────
+    plt.setp(axes[n_canales - 1, 0].get_xticklabels(), visible=True, color=COLOR_TICK)
+    plt.setp(axes[n_canales - 1, 1].get_xticklabels(), visible=True, color=COLOR_TICK)
+    axes[n_canales - 1, 0].set_xlabel("Frecuencia [Hz]", color=COLOR_LABEL, fontsize=8)
+
+    # ── Fila 4 col 0: ocultar ─────────────────────────────────────────────
     axes[3, 0].set_visible(False)
 
     # ── Fila 4 col 1: dinamómetro ─────────────────────────────────────────
     ax_din = axes[3, 1]
     ax_din.plot(t_d, dinam, color=COLOR_DINAM, linewidth=1.5, alpha=0.95)
     ax_din.set_ylabel("DINAMÓMETRO\n[N]", color=COLOR_DINAM,
-                      fontsize=8, rotation=0, labelpad=40, va='center')
+                      fontsize=8, rotation=90, labelpad=20, va='center')
     ax_din.tick_params(axis='y', colors=COLOR_DINAM)
     ax_din.set_xlabel("Tiempo [s]", color=COLOR_LABEL, fontsize=8)
     ax_din.set_xlim(t_d[0], t_d[-1])
     estilo_ax(ax_din)
+    plt.setp(ax_din.get_xticklabels(), visible=True, color=COLOR_TICK)
 
-    # Título y pie
+    # ── Título y pie ──────────────────────────────────────────────────────
     fig.suptitle(
         f"{nombre}  —  Butterworth ord. {ORDEN_BP}  |  {f_low}–{f_high} Hz  |  Fs = {fs} Hz",
         color=COLOR_TITLE, fontsize=11, fontweight='bold'
     )
     fig.text(0.5, 0.005, pie, ha='center', va='bottom',
              fontsize=8, color=COLOR_LABEL, style='italic', fontweight='bold')
-
-    fig.set_size_inches(19, 10.5)     
     
     # ruta_svg = nombre_salida(RUTA_EMG)
     # fig.savefig(ruta_svg, format='svg', bbox_inches='tight',
     #             facecolor=fig.get_facecolor())
     # print(f"\n  Figura guardada en: {ruta_svg}")
-    
+
     pantalla_completa(fig)
-    
     return fig
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -279,7 +292,11 @@ for nombre, f_low, f_high in FIGURAS:
     )
     
     # 6) Rectificar Señales
-    emg_final = rectificar_senal(emg_final, tipo='completa')
+    # emg_final = rectificar_senal(emg_final, tipo='completa')
+    
+    # # 7) ENVOLVEMENTE SEÑAL
+    for i in range(emg_final.shape[0]):
+        emg_final[i, :] = emg_envelope(emg_final[i, :], fs=FS, tc_ms=20, rectify="full")
     
     plot_figura(nombre, emg_final, dinam_data, t_emg, t_dinam, f_low, f_high, FS, PIE_FIGURA)
 

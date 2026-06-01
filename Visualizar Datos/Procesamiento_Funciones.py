@@ -314,3 +314,67 @@ def rectificar_senal(senal, tipo='completa'):
         
     else:
         raise ValueError("El tipo de rectificación debe ser 'completa' o 'media'.")
+        
+# %%  ENVOLVENTE
+
+def emg_envelope(x, fs=None, t=None, tc_ms=20.0, rectify="full"):
+    """
+    Calcula envolvente tipo: rectificación + 'integración' (promedio móvil).
+    Basado en zero_phase_rectify_integrate() de tus scripts.
+
+    Parámetros
+    ----------
+    x : array-like
+        Vector de señal EMG.
+    fs : float, opcional
+        Frecuencia de muestreo en Hz. (recomendado si la tienes)
+    t : array-like, opcional
+        Vector de tiempo en segundos (mismo largo que x). Se usa si fs es None.
+    tc_ms : float
+        "Constante de tiempo" en ms (realmente longitud de ventana del promedio móvil).
+    rectify : {"half","full",None}
+        - "half": media onda -> max(x,0)  (tal cual los scripts)
+        - "full": onda completa -> abs(x) (más común en EMG)
+        - None : sin rectificación
+
+    Retorna
+    -------
+    env : np.ndarray
+        Envolvente (misma longitud que x).
+    """
+    x = np.asarray(x, dtype=float)
+
+    # --- determinar fs ---
+    if fs is None:
+        if t is None:
+            raise ValueError("Debes proporcionar fs (Hz) o t (vector de tiempo en s).")
+        t = np.asarray(t, dtype=float)
+        if len(t) < 2:
+            return x.copy()
+        dt = float(np.mean(np.diff(t)))
+        if dt <= 0:
+            return x.copy()
+        fs = 1.0 / dt
+
+    # --- rectificación ---
+    if rectify == "half":
+        x_rect = np.maximum(x, 0.0)  # como en tus scripts
+    elif rectify == "full":
+        x_rect = np.abs(x)
+    elif rectify is None:
+        x_rect = x
+    else:
+        raise ValueError("rectify debe ser 'half', 'full' o None.")
+
+    # --- ventana en muestras ---
+    window_samples = int((tc_ms / 1000.0) * float(fs))
+    if window_samples < 3:
+        return x_rect.copy()
+
+    # forzar impar (ventana simétrica) como en tus scripts
+    if window_samples % 2 == 0:
+        window_samples += 1
+
+    kernel = np.ones(window_samples, dtype=float) / window_samples
+    env = np.convolve(x_rect, kernel, mode="same")  # centrado ("zero-phase" aproximado)
+    return env
