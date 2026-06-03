@@ -193,6 +193,11 @@ void setup() {
   drv.setMode(DRV2605_MODE_REALTIME);
   drv.setRealtimeValue(0);
 
+  // Cargar calibración si es que hay
+  if(cargarCalibracion()){
+    enviarMensaje("Calibración cargada desde memoria");
+  }
+
   // BLE
   BLEDevice::init("ESP32-DRV2605");
   BLEServer *pServer = BLEDevice::createServer();
@@ -231,7 +236,9 @@ void loop() {
   // Calibración normal (solo si no hay guardada)
   if (calibrar) {
     calibrar = false;
-    calibrarLRA();
+    if (!cargarCalibracion()) {  // solo calibra si no hay datos guardados
+        calibrarLRA();
+    }
     return;
   }
 
