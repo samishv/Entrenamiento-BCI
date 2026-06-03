@@ -1,5 +1,8 @@
 import os
 import pygame
+import asyncio
+import threading
+from bleak import BleakClient, BleakScanner
 
 from scripts.utils import load_images, Animation
 from scripts.entities import Player
@@ -98,8 +101,8 @@ class Game:
         self.time_limit = 20
         
         self.level_time_limits = {
-            1: 3,  # Nivel 1
-            2: 2,  # Nivel 2
+            1: 10,  # Nivel 1
+            2: 5,  # Nivel 2
         }
         
         # ===== VIDAS =====
@@ -213,6 +216,19 @@ class Game:
         
         self.score = 0
         self.max_score_per_challenge = 1000
+
+        # ===== BLE =====
+        self.DEVICE_NAME      = "ESP32-DRV2605"
+        self.CHAR_WRITE_UUID  = "abcd1234-ab12-cd34-ef56-abcdef123456"
+        self.CHAR_NOTIFY_UUID = "abcd1234-ab12-cd34-ef56-abcdef123457"
+
+        self.INTENSIDAD_ARIADNE = 150
+        self.DELAY_ARIADNE      = 200
+
+        self.bluetooth_enabled = False   # el menú lo togglea
+        self.ble_client  = None          # BleakClient activo
+        self.ble_loop    = None          # loop asyncio del hilo BLE
+        self.ble_thread  = None
         
         # ===== FADES (HUD / END / MENSAJES) =====
         self.fade_hearts_in_duration = 0.5
@@ -285,7 +301,55 @@ class Game:
             self.bitmap_font_big_white[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_big, h * self.bitmap_scale_big))
             self.bitmap_font_mid_white[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_mid, h * self.bitmap_scale_mid))
             self.bitmap_font_chibi_white[ch] = pygame.transform.scale(img, (w * self.bitmap_scale_chibi, h * self.bitmap_scale_chibi))
-        
+
+
+
+    # Llamar justo antes de iniciar niveles para preparar BLE si está habilitado en el menú de configuración. 
+    def start_ble_if_needed(self):
+        if self.bluetooth_enabled and self.ble_client is None:
+            self.ble_thread = threading.Thread(
+                target=self._ble_thread_runner, daemon=True
+            )
+            self.ble_thread.start()
+        if not self.bluetooth_enabled:
+            self.stop_ble()  # si se deshabilitó, aseguramos detener cualquier conexión activa
+
+    def stop_ble(self):
+        """Llamar al salir del nivel o al togglear OFF desde el menú."""
+        self.ble_client = None          # la corutina detecta esto y sale
+
+    def send_vibration(self, intensity: int, delay_ms: int):
+        """Usar esto desde cualquier parte del juego."""
+        if not self.bluetooth_enabled or self.ble_client is None:
+            return
+        cmd = f"{intensity},{delay_ms}"
+        asyncio.run_coroutine_threadsafe(
+            self.ble_client.write_gatt_char(self.CHAR_WRITE_UUID, cmd.encode()),
+            self.ble_loop
+        )
+
+    # ── Internos ────────────────────────────────────────────
+    def _ble_thread_runner(self):
+        self.ble_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.ble_loop)
+        self.ble_loop.run_until_complete(self._ble_task())
+
+    async def _ble_task(self):
+        from bleak import BleakClient, BleakScanner
+        device = await BleakScanner.find_device_by_name(self.DEVICE_NAME, timeout=10)
+        if device is None:
+            print("ESP32 no encontrado")
+            return
+        async with BleakClient(device) as client:
+            self.ble_client = client
+            await client.start_notify(self.CHAR_NOTIFY_UUID, self._on_notify)
+            while self.ble_client is not None:
+                await asyncio.sleep(0.1)
+            await client.stop_notify(self.CHAR_NOTIFY_UUID)
+
+    def _on_notify(self, sender, data):
+        print(f"[ESP32] {data.decode()}")
+
     def load_numbered_bitmap_font(self, folder, charset, start_index=1):
         font = {}
         for i, ch in enumerate(charset):
@@ -604,6 +668,7 @@ class Game:
             })
     
     def run(self):
+        self.start_ble_if_needed()
         # === ROUTER DE NIVELES ===
         if self.selected_level == 1:
             self.run_level_1()
@@ -631,6 +696,7 @@ class Game:
                         self.playing = False
     
                     if event.key == pygame.K_SPACE and self.state == self.WAITING and self.active_challenge:
+                        self.send_vibration(self.INTENSIDAD_ARIADNE, self.DELAY_ARIADNE)
                         cur = self.current_challenge()
                         if not cur:
                             continue
