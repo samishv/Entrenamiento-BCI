@@ -16,7 +16,7 @@ def on_notify(sender, data):
                 print(f"  → Frecuencia de resonancia: {p.replace('FREQ:', '')}")
             elif "CALIB:" in p:
                 estado = p.replace("CALIB:", "")
-                print(f"  → Resultado: {'✓ Exitosa' if estado == 'OK' else '✗ Fallida'}")
+                print(f"  → Resultado: {'Exitosa' if estado == 'OK' else 'Fallida'}")
 
 async def main():
     print("Buscando ESP32...")

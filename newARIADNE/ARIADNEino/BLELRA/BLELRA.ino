@@ -22,7 +22,6 @@ BLECharacteristic *pCharNotify;
 bool deviceConnected     = false;
 bool parametrosRecibidos = false;
 bool calibrar            = false;
-bool recalibrar          = false;
 
 uint8_t  intensidad = 0;
 uint32_t delayMs    = 0;
@@ -143,7 +142,6 @@ class MyServerCallbacks : public BLEServerCallbacks {
     deviceConnected     = false;
     parametrosRecibidos = false;
     calibrar            = false;
-    recalibrar          = false;
     drv.setRealtimeValue(0);
     digitalWrite(LED_VERDE, LOW);
     pServer->startAdvertising();
@@ -157,8 +155,6 @@ class MyCallbacks : public BLECharacteristicCallbacks {
 
     if (value == "CALIBRAR") {
       calibrar = true;
-    } else if (value == "RECALIBRAR") {
-      recalibrar = true;
     } else {
       int commaIndex = value.indexOf(',');
       if (commaIndex != -1) {
@@ -175,9 +171,9 @@ class MyCallbacks : public BLECharacteristicCallbacks {
 
 void setup() {
   Serial.begin(9600);
-
   pinMode(LED_NARANJITA, OUTPUT);
   pinMode(LED_VERDE, OUTPUT);
+
   digitalWrite(LED_NARANJITA, HIGH);
   digitalWrite(LED_VERDE, LOW);
   delay(1000);
@@ -223,20 +219,14 @@ void setup() {
 
 
 void loop() {
-  // Calibración forzada (borra la guardada)
-  if (recalibrar) {
-    recalibrar = false;
-    prefs.begin("drv2605", false);
-    prefs.putBool("calibrado", false);
-    prefs.end();
-    calibrarLRA();
-    return;
-  }
 
   // Calibración normal (solo si no hay guardada)
   if (calibrar) {
     calibrar = false;
     if (!cargarCalibracion()) {  // solo calibra si no hay datos guardados
+        prefs.begin("drv2605", false);
+        prefs.putBool("calibrado", false);
+        prefs.end();
         calibrarLRA();
     }
     return;
