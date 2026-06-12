@@ -31,7 +31,6 @@ async def main():
 
         print("\nComandos disponibles:")
         print("  CALIBRAR    — calibra si no hay datos guardados")
-        print("  RECALIBRAR  — fuerza nueva calibración")
         print("  INT,DELAY   — vibra (ej: 150,2000)")
         print("  salir       — desconecta\n")
 
@@ -42,7 +41,7 @@ async def main():
             await client.write_gatt_char(CHAR_WRITE_UUID, cmd.encode())
 
             # Si es calibración espera la respuesta
-            if cmd in ("CALIBRAR", "RECALIBRAR"):
+            if cmd in ("CALIBRAR"):
                 await asyncio.sleep(8)
 
         await client.stop_notify(CHAR_NOTIFY_UUID)
