@@ -6,8 +6,8 @@ from mne.viz import plot_topomap
 from datetime import datetime
 
 ahora = datetime.now()
-df = pd.read_excel("Metricas_CMC_BASEdAT.xlsx")
-testName = "Base_dAT"
+df = pd.read_excel("Metricas_CMC_multitapers.xlsx")
+testName = "Multitapers"  
 metricas = ["Area_Beta", "Area_Gamma", "Area_Mu", "Max_Beta", "Max_Gamma", "Max_Mu", "Area_Beta_S", "Area_Gamma_S", "Area_Mu_S", "Max_Beta_S", "Max_Gamma_S", "Max_Mu_S", "Area_Beta_M", "Area_Gamma_M", "Area_Mu_M", "Max_Beta_M", "Max_Gamma_M", "Max_Mu_M"]  # Puedes agregar más métricas aquí
 
 for metrica in metricas:
