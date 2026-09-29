@@ -584,11 +584,7 @@ class ConfiguracionPage(tk.Frame):
 
 # ══════════════════════════════════════════════════════════════════════════════
 class CalibracionPage(tk.Frame):
-    """
-    Barra superior = temporizador del ensayo.
-    Gráfica = fuerza en Newtons en tiempo real.
-    Eje Y se adapta automáticamente al pico registrado.
-    """
+
     def __init__(self, parent, controller):
         super().__init__(parent, bg=BG_LIGHT)
         self.controller  = controller

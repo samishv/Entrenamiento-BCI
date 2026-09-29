@@ -2,12 +2,12 @@ import numpy as np
 import os
 
 # ── Configuración ─────────────────────────────────────────────────────────────
-BASE_DIR = os.environ.get("CMC_BASE", r"D:\luiso\Documentos\Luis\UPIITA\TT\CMC")
-SUJETO   = os.environ.get("CMC_SUJETO", "S17")
+BASE_DIR = os.environ.get("CMC_BASE", r"C:\Users\ikerf\Desktop\Upiita\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2 copia")
+SUJETO   = os.environ.get("CMC_SUJETO", "S6")
 RUTA_CARPETA = os.path.join(BASE_DIR, SUJETO, "EMG")
 
 FS           = 1000
-SEG_INICIO = int(os.environ.get("CMC_SEG_INICIO", 5))
+SEG_INICIO = int(os.environ.get("CMC_SEG_INICIO", 1))
 SEG_UTILES = int(os.environ.get("CMC_SEG_UTILES", 10))
 
 # ── Cálculo de muestras ───────────────────────────────────────────────────────
