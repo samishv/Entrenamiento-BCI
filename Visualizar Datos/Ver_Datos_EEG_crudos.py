@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 from Procesamiento_Funciones import cargar_npy_eeg
 
@@ -12,33 +13,39 @@ plt.close('all')
 
 if "RUTA_NPY" not in globals():
     RUTA_NPY = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2\S17\EEG\S17_260421_EEG_OK_3_ME.npy"
+    #RUTA_NPY = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2\S5\EEG\S5_260429_EEG_OK_1_ME.npy"
 
 FS = 250
+SEGUNDOTES = 2
+TICKAZOS_LABEL = 0.5
+
+VENTANA_X = 11
+VENTANA_Y = 10
 
 CANALES = ['Fz', 'FC3', 'FCz', 'FC4', 'Cz', 'C3', 'C4']
 
 # Canales que deseas visualizar
-CANALES_PLOT = ['C3','Cz','C4']
+CANALES_PLOT = ['FC3','C3','Cz']
 
 COLORES = [
-    '#6FC7B7',
-    '#A1DAD1',
-    '#D0EDE8',
-    '#FFFFFF',
-    '#BFEEF6',
-    '#81DCEE',
-    '#41CCE3'
+    '#000000',
+    '#15D18F',
+    '#000000',
+    '#000000',
+    '#008ACF',
+    '#13A2A9',
+    '#000000'
 ]
 
-BG_FIG      = '#000000'
-BG_AX       = '#000000'
-COLOR_GRID  = '#7a7a7a'
-COLOR_TICK  = '#d1d1d1'
-COLOR_LABEL = '#ffffff'
-COLOR_TITLE = '#ffffff'
+BG_FIG      = '#ffffff'
+BG_AX       = '#ffffff'
+COLOR_GRID  = '#5a5a5a'
+COLOR_TICK  = '#000000'
+COLOR_LABEL = '#000000'
+COLOR_TITLE = '#000000'
 
-SIZENAMES = 32
-SIZELABELS = 26
+SIZENAMES = 36
+SIZELABELS = 30
 ESPACIO_ENTRE = 0.1
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -199,7 +206,7 @@ def plot_figura(
         bottom=ESPACIO_ENTRE
     )
 
-    fig.set_size_inches(16, 16)
+    fig.set_size_inches(VENTANA_X, VENTANA_Y)
 
     # fig.suptitle(
     #     f'{nombre_fig} | Señales EEG sin preprocesamiento | fs = {fs} Hz',
@@ -211,7 +218,7 @@ def plot_figura(
     y_min = datos.min()
     y_max = datos.max()
 
-    margen = (y_max - y_min) * 0.05
+    margen = (y_max - y_min) * 0.1
 
     # fig.text(
     #     0.5,
@@ -233,7 +240,7 @@ def plot_figura(
             tiempo,
             datos[i],
             color=colores[i],
-            linewidth=1.5,
+            linewidth=2.0,
         )
 
         ax.set_ylabel(
@@ -251,6 +258,10 @@ def plot_figura(
         ax.set_ylim(
             y_min - margen,
             y_max + margen
+        )
+        
+        ax.xaxis.set_major_locator(
+            ticker.MultipleLocator(TICKAZOS_LABEL)
         )
 
         if i < n_graficas - 1:
@@ -306,6 +317,25 @@ datos = cargar_npy_eeg(
 )
 
 n_canales, n_muestras = datos.shape
+
+if SEGUNDOTES is not None:
+
+    muestras_a_procesar = int(SEGUNDOTES * FS)
+
+    if muestras_a_procesar < n_muestras:
+
+        datos = datos[:, :muestras_a_procesar]
+
+        n_canales, n_muestras = datos.shape
+
+    else:
+
+        print(
+            f"[AVISO] SEGUNDOTES = {SEGUNDOTES} s "
+            f"supera la duración de la señal "
+            f"({n_muestras/FS:.2f} s). "
+            f"Se procesará la señal completa."
+        )
 
 tiempo = np.arange(n_muestras) / FS
 

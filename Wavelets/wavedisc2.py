@@ -2,16 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pywt
 
-plt.close('all')
+# plt.close('all')
 
 # %% Parámetros
 
-fs = 1000
-level = 6
+fs = 250
+level = 4
 wavelet_mom = 'db4'
 
-ruta = r"C:\Users\ikerf\Desktop\Upiita\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2\S18\EEG\S18_260429_EEG_OV_2_MI.npy"
-FACTORES = [1.5, 0.0, 0.0, 0.0, 0.0, 1.5]
+ruta = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\DataCMC\Registros CMC 2\S5\EEG\S5_260429_EEG_OV_1_ME.npy"
+FACTORES = [0.0, 0.0, 0.0, 0.0]
 #          [ D6,  D5,  D4,  D3,  D2,  D1]
 
 # ruta = r"D:\luiso\Descargas\RegistrosCMC\RegistrosCMC\S5\EEG\S5_260323_EEG_CK_1_MI.npy"
