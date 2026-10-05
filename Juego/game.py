@@ -96,12 +96,12 @@ class Game:
         self.tile_size = 16
 
         # ===== VARIABLES MODIFICABLES (AUTORUN / TIEMPO PARA PULSAR) =====
-        self.auto_speed = 2
+        self.auto_speed = 5
         self.fail_return_speed = 1.2
-        self.time_limit = 20
+        self.time_limit = 5
         
         self.level_time_limits = {
-            1: 10,  # Nivel 1
+            1: 5,  # Nivel 1
             2: 5,  # Nivel 2
         }
         

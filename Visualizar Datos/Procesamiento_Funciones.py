@@ -378,3 +378,105 @@ def emg_envelope(x, fs=None, t=None, tc_ms=20.0, rectify="full"):
     kernel = np.ones(window_samples, dtype=float) / window_samples
     env = np.convolve(x_rect, kernel, mode="same")  # centrado ("zero-phase" aproximado)
     return env
+
+# %% LAPLACIANO
+
+def filtro_laplaciano(
+        datos,
+        canales,
+        canal_interes,
+        canales_vecinos):
+
+    idx_interes = canales.index(canal_interes)
+
+    indices_vecinos = [
+        canales.index(ch)
+        for ch in canales_vecinos
+    ]
+
+    senal_interes = datos[idx_interes]
+
+    promedio_vecinos = np.mean(
+        datos[indices_vecinos, :],
+        axis=0
+    )
+
+    senal_laplaciana = senal_interes - promedio_vecinos
+
+    return senal_laplaciana
+
+# %% QUITAR COMPONENTE DC
+
+def quitar_componente_dc(datos):
+
+    datos = np.asarray(datos)
+
+    datos_sin_dc = datos - np.mean(
+        datos,
+        axis=1,
+        keepdims=True
+    )
+
+    return datos_sin_dc
+
+# %% PANTALLA COMPLETA
+
+def pantalla_completa(fig):
+
+    try:
+        manager = fig.canvas.manager
+
+        try:
+            manager.window.state('zoomed')
+            return
+        except:
+            pass
+
+        try:
+            manager.window.showMaximized()
+            return
+        except:
+            pass
+
+        try:
+            manager.frame.Maximize(True)
+            return
+        except:
+            pass
+
+        fig.set_size_inches(19, 10.5)
+
+    except:
+        fig.set_size_inches(19, 10.5)
+        
+# %% INSTAR
+
+def hardlim(x):
+    return np.where(x >= 0, 1, 0)
+
+def entrenar_instar(*vectores, epochs=1000, alpha=0.1, bias=50):
+
+    data = [np.asarray(v) for v in vectores]
+
+    for v in data:
+        if v.ndim != 1:
+            raise ValueError("Todos los datos de entrada deben ser vectores de una dimensión.")
+
+    longitudes = [len(v) for v in data]
+
+    if len(set(longitudes)) != 1:
+        raise ValueError("Todos los vectores deben tener la misma longitud.")
+
+    data = np.array(data)
+    num_features = data.shape[1]
+    weights = np.random.rand(num_features)
+
+    for epoch in range(epochs):
+        for sample in data:
+
+            z = np.dot(weights, sample) + bias
+            a = hardlim(z)
+
+            weights = weights + alpha * a * (sample - weights)
+
+    return weights
