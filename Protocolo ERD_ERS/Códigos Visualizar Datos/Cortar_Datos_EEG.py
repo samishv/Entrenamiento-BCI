@@ -3,15 +3,14 @@ import numpy as np
 import os
 
 # ── Variables Locales de Configuración (Valores fijos) ────────────────────
-base_dir   = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-sujeto     = "SV1"
+ruta_carpeta   = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals\SV2\MI"
+sujeto = "SXX"
 columnas   = ['Fz', 'FC3', 'FCz', 'FC4', 'Cz', 'C3', 'C4']
 fs         = 250
 seg_inicio = 0
 seg_utiles = 21
 
 # ── Rutas y Parámetros de Muestras ────────────────────────────────────────
-ruta_carpeta = os.path.join(base_dir, sujeto)
 
 m_inicio = fs * seg_inicio
 m_fin    = m_inicio + fs * seg_utiles

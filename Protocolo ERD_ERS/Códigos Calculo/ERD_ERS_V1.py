@@ -56,8 +56,8 @@ plt.close("all")
 
 # Carpeta en la que se encuentran los cuatro ensayos
 CARPETA_DATOS = Path(
-    r"D:\luiso\Documentos\Luis\UPIITA\TT"
-    r"\Entrenamiento-BCI\Protocolo ERD_ERS\Signals\SV1"
+    r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+    r"\SV1\ME"
 )
 
 # Patron usado para localizar los registros
@@ -957,7 +957,7 @@ def graficar_ersp_promedio(ersp_db, tiempo_tfr):
             FREQS_MORLET,
             ersp_db[indice_canal],
             shading="auto",
-            cmap="RdBu_r",
+            cmap="jet",
             vmin=-limite,
             vmax=limite,
         )
@@ -1009,8 +1009,8 @@ def graficar_ersp_promedio(ersp_db, tiempo_tfr):
         )
 
         ax.set_ylim(
-            4.0,
-            45.0,
+            5.0,
+            30.0,
         )
 
         ax.set_xlabel(
@@ -1090,7 +1090,7 @@ def graficar_ersp_canal_individual(
             FREQS_MORLET,
             datos[indice_ensayo],
             shading="auto",
-            cmap="RdBu_r",
+            cmap="jet",
             vmin=-limite,
             vmax=limite,
         )

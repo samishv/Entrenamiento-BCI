@@ -20,7 +20,7 @@ plt.close('all')
 # CONFIGURACIÓN
 # ─────────────────────────────────────────────────────────────────────────────
 
-RUTA_NPY = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals\SV1\S17_260421_EEG_OV_2_ME.npy"
+RUTA_NPY = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals\SV1\ME\S17_260421_EEG_CK_2_ME.npy"
 
 FS = 250
 
