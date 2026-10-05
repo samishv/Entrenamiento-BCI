@@ -23,7 +23,7 @@ ELECTRODO = "Fz"    # Solo se usa si TODAS_LAS_COMBINACIONES = False
 # ── Métricas ──────────────────────────────────────────────────────────────────
 METRICAS = ["Max_Beta","Area_Beta"]
 
-ETIQUETAS_METRICAS = ["Máximo", "Área"]
+ETIQUETAS_METRICAS = ["Pico máximo", "AUC"]
 
 # Orden deseado de los sujetos (deja vacío [] para orden alfabético automático)
 ORDEN_SUJETOS = ["S17", "S6", "S7", "S18", "S4", "S5"]  # ejemplo, usa tus nombres reales
