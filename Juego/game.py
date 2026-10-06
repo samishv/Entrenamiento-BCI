@@ -59,11 +59,15 @@ class Game:
         self.bg_decel = 14.0
         self.prev_scroll_x = 0.0
         
+        # ===== MODO DE MANO =====
+        # El juego comienza utilizando la mano diestra.
+        self.hand_mode = "DIESTRO"
+        
         # ===== PLAYER ASSETS =====
         self.assets = {
             "ice": load_images("tiles/ice"),
             "water": load_images("tiles/water"),
-            "hand": load_images("entities/hand"),
+            "hand": load_images(self._get_hand_folder()),
             "heart": load_images("entities/heart"),
             "clock": load_images("entities/clock"),
             "solidwater": load_images("tiles/solidwater"),
@@ -503,6 +507,49 @@ class Game:
         else:
             self.screen = pygame.display.set_mode(self.window_size)
         self._recalc_scaling()
+        
+    def _get_hand_folder(self):
+        """
+        Devuelve la carpeta de imágenes correspondiente
+        al modo de mano seleccionado.
+        """
+        if self.hand_mode == "ZURDO":
+            return "entities/hand_left"
+    
+        return "entities/hand"
+    
+    
+    def set_hand_mode(self, mode):
+        """
+        Cambia el modo de mano y vuelve a cargar
+        las imágenes correspondientes.
+        """
+        mode = mode.upper()
+    
+        if mode not in ("DIESTRO", "ZURDO"):
+            raise ValueError("El modo debe ser DIESTRO o ZURDO")
+    
+        self.hand_mode = mode
+    
+        # Cargar las imágenes de la carpeta seleccionada.
+        self.assets["hand"] = load_images(self._get_hand_folder())
+    
+        # Actualizar los frames que utiliza el juego.
+        self.hand_frames = self.assets["hand"]
+    
+        # Reiniciar la animación de la mano.
+        self.hand_frame_idx = 0
+        self.hand_timer = 0.0
+    
+    
+    def toggle_hand_mode(self):
+        """
+        Alterna entre el modo DIESTRO y el modo ZURDO.
+        """
+        if self.hand_mode == "DIESTRO":
+            self.set_hand_mode("ZURDO")
+        else:
+            self.set_hand_mode("DIESTRO")
         
     def apply_level_theme(self, level_id: int):
         self.current_level_theme = level_id

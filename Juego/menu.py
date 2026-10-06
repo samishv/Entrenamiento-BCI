@@ -84,7 +84,7 @@ class MainMenu(Menu):
 class ConfigMenu(Menu):
     def __init__(self, game):
         super().__init__(game)
-        self.state = "Volver"          # cursor puede estar en "Volver" o "BT"
+        self.state = "Volver"               # opciones: "BT", "MODO" o "Volver"
         
         self.nickname_buffer = ""
         self.max_nickname_len = 20
@@ -160,25 +160,37 @@ class ConfigMenu(Menu):
                     caret_rect = caret_surf.get_rect(center=(mid_w, typed_y))
                 self.game.display.blit(caret_surf, caret_rect)
 
-            # ── Switch Bluetooth ────────────────────────────
-            bt_y = 180 + self.offset_y
+            # ── Switch de Ariadne ───────────────────────────
+            bt_y = 175 + self.offset_y
             self._draw_bt_switch(mid_w, bt_y)
-
-            # ── Volver ──────────────────────────────────────
+            
+            # ── Selector de modo de mano ────────────────────
+            modo_y = 202 + self.offset_y
+            modo_rect = self._draw_hand_mode(mid_w, modo_y)
+            
+            # ── Opción Volver ───────────────────────────────
             volver = self.game.render_bitmap_text_surface(
-                "Volver", self.game.bitmap_font_white,
+                "Volver",
+                self.game.bitmap_font_white,
                 spacing=self.game.bitmap_spacing
             )
-            volver_rect = volver.get_rect(center=(mid_w, 220 + self.offset_y))
+            
+            volver_rect = volver.get_rect(
+                center=(mid_w, 235 + self.offset_y)
+            )
+            
             self.game.display.blit(volver, volver_rect)
             
-
-            # Cursor solo en "Volver" (el BT se activa con ENTER sobre él)
-            if self.state == "Volver":
-                self.draw_cursor(volver_rect)
+            # ── Cursor de la opción seleccionada ────────────
             if self.state == "BT":
-                self.draw_cursor(self._bt_rect.move(-90, 0))  # ajusta según el diseño
-                  
+                self.draw_cursor(self._bt_option_rect)
+            
+            elif self.state == "MODO":
+                self.draw_cursor(modo_rect)
+            
+            elif self.state == "Volver":
+                self.draw_cursor(volver_rect)
+            
             self.blit_screen()
 
         pygame.key.stop_text_input()
@@ -219,21 +231,68 @@ class ConfigMenu(Menu):
 
         # Guardamos el rect para check_input (detección de cursor opcional)
         self._bt_rect = box_rect
+        
+        # Rectángulo completo de la opción:
+        self._bt_option_rect = label_rect.union(box_rect)
+        
+    def _draw_hand_mode(self, mid_w, y):
+        """
+        Dibuja el texto MODO: DIESTRO o MODO: ZURDO.
+        También devuelve su rectángulo para colocar el cursor.
+        """
+        text = f"MODO: {self.game.hand_mode}"
+    
+        mode_surface = self.game.render_bitmap_text_surface(
+            text,
+            self.game.bitmap_font_white,
+            spacing=self.game.bitmap_spacing
+        )
+    
+        mode_rect = mode_surface.get_rect(
+            center=(mid_w, y)
+        )
+    
+        self.game.display.blit(
+            mode_surface,
+            mode_rect
+        )
+    
+        return mode_rect
 
     def check_input(self):
+        # Orden vertical de las opciones.
+        options = ["BT", "MODO", "Volver"]
+    
+        # Localizar la opción actualmente seleccionada.
+        current_index = options.index(self.state)
+    
+        # Bajar a la siguiente opción.
         if self.game.DOWN_KEY:
-            # Alternar entre "BT" y "Volver"
-            self.state = "Volver" if self.state == "BT" else "BT"
-        if self.game.UP_KEY:
-            self.state = "Volver" if self.state == "BT" else "BT"
-
+            self.state = options[
+                (current_index + 1) % len(options)
+            ]
+    
+        # Subir a la opción anterior.
+        elif self.game.UP_KEY:
+            self.state = options[
+                (current_index - 1) % len(options)
+            ]
+    
+        # Ejecutar la opción seleccionada.
         if self.game.START_KEY:
+    
             if self.state == "BT":
-                # Toggle
-                self.game.bluetooth_enabled = not self.game.bluetooth_enabled
+                self.game.bluetooth_enabled = (
+                    not self.game.bluetooth_enabled
+                )
+    
+            elif self.state == "MODO":
+                self.game.toggle_hand_mode()
+    
             elif self.state == "Volver":
                 self._save_and_return()
-
+    
+        # Regresar con la tecla configurada para BACK.
         if self.game.BACK_KEY:
             self._save_and_return()
 
