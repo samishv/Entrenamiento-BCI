@@ -27,7 +27,7 @@ def construir_jerarquia(ruta, prefijo=""):
     return lineas
 
 if __name__ == "__main__":
-    ruta = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-gamificado-BCI"
+    ruta = r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals\SARBOL"
     
     ruta_carpeta_salida = r"D:\luiso\Escritorio"
     nombre_archivo = "Arbol carpetas.txt"
