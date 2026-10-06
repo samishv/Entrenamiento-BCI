@@ -23,7 +23,7 @@ import sys
 from datetime import datetime
 
 from psychopy import prefs
-prefs.hardware['audioDevice'] = 'Speaker / Headphone (Realtek(R) Audio)'
+prefs.hardware['audioDevice'] = 'Speakers (Realtek(R) Audio)'
 prefs.hardware['audioLib'] = ['ptb', 'sounddevice']   # antes de importar sound
 prefs.hardware['audioLatencyMode'] = 3
 from psychopy import visual, core, event, sound, gui

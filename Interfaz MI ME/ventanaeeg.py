@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-python ventanaeeg.py [nombre_stream]        (por defecto 'streamTEST')
-& C:\Users\ikerf\.conda\envs\eeg_env\python.exe "c:/Users/ikerf/Desktop/Upiita/TT/Entrenamiento-BCI/Interfaz MI ME/ventanaeeg.py"
-"""
+
 
 import sys
 import time
