@@ -2,13 +2,28 @@
 """
 Protocolo MI / ME  —  1 bloque por ejecución.
 
-marcadores LSL (stream 'MIME_Markers').
+Trial (14-15 s):
+    ATENCIÓN (cruz '+'):  jitter 1-2 s  ->  fijación 3 s
+    -> beep + cue (color/imagen) 5 s
+    -> REPOSO 5 s (pantalla negra, fijo)
+Bloque: 15 MI + 15 ME aleatorizados (máx. MAX_REPETIDAS iguales seguidas).
+
+Solo presenta estímulos y envía marcadores LSL (stream 'MIME_Markers').
 El EEG y los marcadores los graba LabRecorder (mismo reloj LSL).
 
-Marcadores (todos alineados al flip en que aparece el estímulo):
-    block_start | rest_start | cue_MI | cue_ME | iti_start | block_end | block_abort
+Marcadores (todos alineados al flip en que aparece el estímulo o arranca la fase):
+    block_start | jitter_start | fix_start | cue_MI | cue_ME |
+    reposo_start | reposo_3s | block_end | block_abort
 
-pulsar Stop en LabRecorder ANTES de cerrar el stream de marcadores.
+    jitter_start : aparece la cruz (inicio del trial)
+    fix_start    : inicio de la fijación de 3 s (la cruz ya estaba; sin cambio visual)
+    cue_MI/ME    : cue + beep
+    reposo_start : pantalla negra
+    reposo_3s    : 3 s después de reposo_start (quedan 2 s de reposo)
+Ventana de análisis prevista: fix_start -> reposo_3s (nominal 3 + 5 + 3 = 11 s).
+
+Al terminar (o abortar) la ventana queda abierta hasta pulsar ESPACIO,
+para dar tiempo a pulsar Stop en LabRecorder ANTES de cerrar el stream de marcadores.
 
 Uso:
     python protocolo_mi_me.py                    # abre el menú de inicio
@@ -31,10 +46,12 @@ from psychopy import visual, core, event, sound, gui
 from pylsl import StreamInfo, StreamOutlet, local_clock, resolve_byprop
 
 # ─── Parámetros del paradigma ────────────────────────────────────────────────
-REPOSO_S       = 5.0
-TAREA_S        = 5.0
-DESCANSO_MIN_S = 5.0
-DESCANSO_MAX_S = 10.0
+JITTER_MIN_S   = 1.0        # atención: cruz con duración aleatoria...
+JITTER_MAX_S   = 2.0
+FIJACION_S     = 3.0        # ...y luego 3 s de fijación (cruz)
+TAREA_S        = 5.0        # cue + beep
+REPOSO_S       = 5.0        # pantalla negra, fijo
+REPOSO_MARCA_S = 3.0        # marcador 'reposo_3s' a los 3 s de reposo_start
 N_POR_CLASE    = 15
 MAX_REPETIDAS  = 3          # nunca más de 3 trials seguidos de la misma clase
 BEEP_HZ, BEEP_S = 1000, 0.3
@@ -43,13 +60,13 @@ BEEP_HZ, BEEP_S = 1000, 0.3
 # Colores con luminancia aproximada igualada (verifícala en tu monitor).
 COLORES = {'A': {'MI': '#3A7BD5', 'ME': '#BE6E14'},
            'B': {'MI': '#BE6E14', 'ME': '#3A7BD5'}}
-IMAGENES = {'MI': None, 'ME': None}   # p.ej. {'MI': 'img/mi.png', 'ME': 'img/me.png'}
+IMAGENES = {'MI': 'ME.png', 'ME': 'ME.png'}   # p.ej. {'MI': 'img/mi.png', 'ME': 'img/me.png'}
 
 TEXTO_INSTR = ("BLOQUE {b}\n\n"
-               "+  reposo, mira la cruz, sin moverte\n"
+               "+  mira la cruz, sin moverte\n"
                "Beep + cue  ->  {mi} = IMAGINA   |   {me} = EJECUTA\n"
-               "Pantalla negra  ->  descansa\n\n"
-               "ESPACIO para comenzar   (ESC para abortar)")
+               "Pantalla negra  ->  reposo (puedes parpadear)\n\n"
+               "Pulsa ESPACIO para comenzar   (ESC para abortar)")
 
 
 class Abortar(Exception):
@@ -201,9 +218,11 @@ def main():
     f = open(os.path.join(a.salida, base + '_triallog.csv'), 'w', newline='', encoding='utf-8')
     w = csv.writer(f)
     w.writerow(['trial', 'clase', 'mapeo', 'seed', 'fps',
-                'reposo_plan', 'tarea_plan', 'descanso_plan',
-                't_rest_lsl', 't_cue_lsl', 't_iti_lsl',
-                'dur_reposo_real', 'dur_tarea_real', 'frames_perdidos'])
+                'jitter_plan', 'fijacion_plan', 'tarea_plan', 'reposo_plan',
+                't_jitter_lsl', 't_fix_lsl', 't_cue_lsl',
+                't_reposo_lsl', 't_reposo3s_lsl',
+                'dur_jitter_real', 'dur_fijacion_real', 'dur_tarea_real',
+                'dur_reposo_3s_real', 'frames_perdidos'])
 
     msg_final = None
     try:
@@ -217,25 +236,36 @@ def main():
         fase(nf(1.0), nada, 'block_start')
 
         for k, clase in enumerate(seq, 1):
-            descanso = rng.uniform(DESCANSO_MIN_S, DESCANSO_MAX_S)
+            jitter = rng.uniform(JITTER_MIN_S, JITTER_MAX_S)
             d0 = win.nDroppedFrames
-            t_rest = fase(nf(REPOSO_S), fix.draw, 'rest_start')
+
+            # Atención: cruz (jitter + fijación)
+            t_jit = fase(nf(jitter), fix.draw, 'jitter_start')
+            t_fix = fase(nf(FIJACION_S), fix.draw, 'fix_start')
+            # Tarea: cue + beep
             t_cue = fase(nf(TAREA_S), cues[clase].draw, f'cue_{clase}', con_beep=True)
-            t_iti = fase(nf(descanso), nada, 'iti_start')
+            # Reposo: pantalla negra, fijo; marcador a los 3 s
+            n_r1 = nf(REPOSO_MARCA_S)
+            n_r2 = nf(REPOSO_S) - n_r1
+            t_rep = fase(n_r1, nada, 'reposo_start')
+            t_r3 = fase(n_r2, nada, 'reposo_3s')
+
             w.writerow([k, clase, a.mapeo, seed, f'{fps:.2f}',
-                        REPOSO_S, TAREA_S, f'{descanso:.3f}',
-                        f'{t_rest:.6f}', f'{t_cue:.6f}', f'{t_iti:.6f}',
-                        f'{t_cue - t_rest:.4f}', f'{t_iti - t_cue:.4f}',
+                        f'{jitter:.3f}', FIJACION_S, TAREA_S, REPOSO_S,
+                        f'{t_jit:.6f}', f'{t_fix:.6f}', f'{t_cue:.6f}',
+                        f'{t_rep:.6f}', f'{t_r3:.6f}',
+                        f'{t_fix - t_jit:.4f}', f'{t_cue - t_fix:.4f}',
+                        f'{t_rep - t_cue:.4f}', f'{t_r3 - t_rep:.4f}',
                         win.nDroppedFrames - d0])
             f.flush()
 
         fase(nf(0.5), nada, 'block_end')
-        msg_final = "Fin del bloque\n\nEspera al experimentador"
+        msg_final = "Fin del bloque\n\nEspera al evaluador"
 
     except Abortar:
         print("[INFO] Abortado por el usuario")
         enviar('block_abort')
-        msg_final = "Bloque abortado\n\nEspera al experimentador"
+        msg_final = "Bloque abortado\n\nEspera al evaluador"
 
     finally:
         f.close()
