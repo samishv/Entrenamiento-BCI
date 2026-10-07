@@ -46,7 +46,7 @@ from Procesamiento_Funciones import (
 plt.close("all")
 
 CARPETA_DATOS = Path(
-    r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+    r"C:\Users\lipsp\Documents\GitHub\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
     r"\SV1\MI"
 )
 PATRON_ARCHIVOS = "*.npy"          # se usan todos los que existan en la carpeta

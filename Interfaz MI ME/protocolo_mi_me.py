@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Protocolo MI / ME  —  1 bloque por ejecución.
 
 Trial (14-15 s):
     ATENCIÓN (cruz '+'):  jitter 1-2 s  ->  fijación 3 s
@@ -60,7 +59,7 @@ BEEP_HZ, BEEP_S = 1000, 0.3
 # Colores con luminancia aproximada igualada (verifícala en tu monitor).
 COLORES = {'A': {'MI': '#3A7BD5', 'ME': '#BE6E14'},
            'B': {'MI': '#BE6E14', 'ME': '#3A7BD5'}}
-IMAGENES = {'MI': 'ME.png', 'ME': 'ME.png'}   # p.ej. {'MI': 'img/mi.png', 'ME': 'img/me.png'}
+IMAGENES = {'MI': 'Interfaz MI ME\MI.png', 'ME': 'Interfaz MI ME\ME.png'}   # p.ej. {'MI': 'img/mi.png', 'ME': 'img/me.png'}
 
 TEXTO_INSTR = ("BLOQUE {b}\n\n"
                "+  mira la cruz, sin moverte\n"
@@ -133,7 +132,7 @@ def main():
     ap.add_argument('--mapeo', choices=['A', 'B'], default='A')
     ap.add_argument('--n_por_clase', type=int, default=N_POR_CLASE)
     ap.add_argument('--eeg_stream', default='streamTEST')
-    ap.add_argument('--salida', default='./Data')
+    ap.add_argument('--salida', default='Protocolo ERD_ERS/Signals/S')
     ap.add_argument('--seed', type=int, default=None)
     ap.add_argument('--ventana', action='store_true', help='no pantalla completa (pruebas)')
     ap.add_argument('--sin_menu', action='store_true', help='omite el menú de inicio')
