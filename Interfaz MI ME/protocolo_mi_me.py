@@ -36,6 +36,7 @@ import random
 import sys
 import subprocess
 from datetime import datetime
+import time
 
 from psychopy import prefs
 #prefs.hardware['audioDevice'] = 'Speakers (Realtek(R) Audio)'
@@ -68,14 +69,12 @@ IMAGENES = {
 }   
 
 TEXTO_INSTR = (
-    "Mira la cruz y evita moverte.\n"
-    "Al escuchar el beep, observa el cue.\n"
-    "{mi} = IMAGINA   |   {me} = EJECUTA\n"
-    "Durante la pantalla negra, descansa.\n"
-    "Puedes parpadear durante el reposo."
+    "1) Mira la cruz y evita moverte.\n\n"
+    "2) Al escuchar el beep, realiza la tarea según la imagen.\n\n"
+    "3) Durante la pantalla negra, descansa.\n\n"
 )
 
-FUENTE = 'Segoe UI'  # 'Arial', 'Helvetica', 'Verdana', 'Tahoma', 'Calibri  '
+FUENTE = 'Minecraft'  # 'Arial', 'Helvetica', 'Verdana', 'Tahoma', 'Calibri  '
 
 
 
@@ -148,13 +147,13 @@ def menu_inicio(a):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--pid', default='X')
-    ap.add_argument('--sesion', default='1')
-    ap.add_argument('--bloque', default='1')
+    ap.add_argument('--sesion', default='D1')
+    ap.add_argument('--bloque', default='B1')
     ap.add_argument('--pantalla', type=int, default=0, help='monitor del sujeto')
     ap.add_argument('--mapeo', choices=['A', 'B'], default='A')
     ap.add_argument('--n_por_clase', type=int, default=N_POR_CLASE)
     ap.add_argument('--eeg_stream', default='streamTEST')
-    ap.add_argument('--salida', default='Protocolo ERD_ERS/Signals/S')
+    ap.add_argument('--salida', default='Protocolo ERD_ERS/Signals/LOGS')
     ap.add_argument('--seed', type=int, default=None)
     ap.add_argument('--ventana', action='store_true', help='no pantalla completa (pruebas)')
     ap.add_argument('--sin_menu', action='store_true', help='omite el menú de inicio')
@@ -241,8 +240,8 @@ def main():
         panel = visual.Rect(
             win,
             pos=(0, -0.02),
-            width=1.50,
-            height=0.78,
+            width=2.0,
+            height=0.7,
             fillColor='#181818',
             lineColor='#4FC3F7',
             lineWidth=2
@@ -298,32 +297,29 @@ def main():
         indicacion = visual.TextStim(
             win,
             text='Presiona ESPACIO para comenzar',
-            pos=(0, -0.47),
+            pos=(0, -0.43),
             height=0.030,
             color='#BDBDBD',
             font=FUENTE
         )
 
-        # Orden de dibujo: primero el fondo y luego el contenido
-        panel.draw()
-        titulo.draw()
-
-        imagen_mi.draw()
-        imagen_me.draw()
-
-        etiqueta_mi.draw()
-        etiqueta_me.draw()
-
-        instrucciones.draw()
-        indicacion.draw()
-
-        win.flip()
-
         event.clearEvents()
-        tecla = event.waitKeys(keyList=['space', 'escape'])
+        while True:
+            panel.draw()
+            titulo.draw()
+            imagen_mi.draw()
+            imagen_me.draw()
+            etiqueta_mi.draw()
+            etiqueta_me.draw()
+            instrucciones.draw()
+            indicacion.draw()
+            win.flip()
 
-        if 'escape' in tecla:
-            raise Abortar()
+            teclas = event.getKeys(['space', 'escape'])
+            if 'escape' in teclas:
+                raise Abortar()
+            if 'space' in teclas:
+                break
     
     def esperar_cierre(msg):
         """Pantalla final: espera ESPACIO (o ESC) sin lanzar Abortar.
@@ -354,10 +350,14 @@ def main():
         me = 'imagen ME' if IMAGENES['ME'] else nombre[COLORES[a.mapeo]['ME']]
         msg = TEXTO_INSTR.format(b=a.bloque, mi=mi, me=me)
         if not eeg_ok:
-            msg = "[!] EEG NO DETECTADO\n\n" + msg
+            print("[!] EEG NO DETECTADO")
+
+        visor = None
         if not a.sin_visor:
             visor = lanzar_visor_eeg(a.eeg_stream)
+            time.sleep(3)
         pantalla_inicio(msg)
+        win.winHandle.activate()
         fase(nf(1.0), nada, 'block_start')
 
         for k, clase in enumerate(seq, 1):
