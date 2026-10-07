@@ -58,17 +58,17 @@ import pyxdf
 MODO = 'procesar'        # 'procesar' = recortar .xdf | 'visualizar' = graficar .npy
 
 # --- Entrada (modo 'procesar') -----------------------------------------------
-RUTA_ARCHIVO_XDF = r"C:\Users\lipsp\Documents\GitHub\Entrenamiento-BCI\Protocolo ERD_ERS\Signals\SVX\D1_B1.xdf"
+RUTA_ARCHIVO_XDF = r"C:\Users\lipsp\Documents\GitHub\Entrenamiento-BCI\Protocolo ERD_ERS\Signals\SK1\D0_B1.xdf"
 RUTAS_XDF = [RUTA_ARCHIVO_XDF]   # lista de archivos .xdf o patrones glob (ej. r"...\SVX\*.xdf")
 
 # --- Salida de los trials .npy -----------------------------------------------
 # Se guardan en <RUTA_SIGNALS>\<CARPETA_SUJETO>\{ME, MI, CSV}
 RUTA_SIGNALS = r"C:\Users\lipsp\Documents\GitHub\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-CARPETA_SUJETO = 'SV1'           # SV1, SV2, SK1, ... | None = usar el nombre de la carpeta del .xdf
+CARPETA_SUJETO = 'SK1'           # SV1, SV2, SK1, ... | None = usar el nombre de la carpeta del .xdf
 GUARDAR_NPY = True               # guardar un .npy por trial
 
 # --- Salida de los .npz ------------------------------------------------------
-CARPETA_SALIDA = './Trials'
+CARPETA_SALIDA = os.path.join(RUTA_SIGNALS, CARPETA_SUJETO)   # carpeta donde se guardan los .npz
 
 # --- Tipo de recorte ---------------------------------------------------------
 TIPO_RECORTE = 'fix_a_reposo3'   # 'fix_a_reposo3' | 'jitter_a_reposo3' | 'jitter_a_jitter' | 'ventana_cue'
@@ -92,9 +92,9 @@ NOMBRE_MARCADORES = 'MIME_Markers'
 # patrones glob. Los marcadores y fs se leen de CSV\<archivo>_indice_trials.csv;
 # sin ese CSV el eje se dibuja en muestras y sin marcadores.
 RUTAS_NPY_VISUALIZAR = [
-    os.path.join(RUTA_SIGNALS, 'SV1'),                    # todo el sujeto (ME y MI)
-    # os.path.join(RUTA_SIGNALS, 'SV1', 'MI'),            # solo los MI
-    # os.path.join(RUTA_SIGNALS, 'SV1', 'MI', 'D1_B1_trial000_MI.npy'),   # un trial
+    os.path.join(RUTA_SIGNALS, 'SK1'),                    # todo el sujeto (ME y MI)
+    # os.path.join(RUTA_SIGNALS, 'SK1', 'MI'),            # solo los MI
+    # os.path.join(RUTA_SIGNALS, 'SK1', 'MI', 'D1_B1_trial000_MI.npy'),   # un trial
 ]
 GUARDAR_FIG = False              # True = guarda PNG junto a cada .npy en vez de abrir ventanas
 QUITAR_DC = True                 # restar la media de cada canal (solo para graficar)
