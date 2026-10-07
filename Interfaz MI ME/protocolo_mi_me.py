@@ -34,10 +34,11 @@ import csv
 import os
 import random
 import sys
+import subprocess
 from datetime import datetime
 
 from psychopy import prefs
-prefs.hardware['audioDevice'] = 'Speakers (Realtek(R) Audio)'
+#prefs.hardware['audioDevice'] = 'Speakers (Realtek(R) Audio)'
 prefs.hardware['audioLib'] = ['ptb', 'sounddevice']   # antes de importar sound
 prefs.hardware['audioLatencyMode'] = 3
 from psychopy import visual, core, event, sound, gui
@@ -59,13 +60,23 @@ BEEP_HZ, BEEP_S = 1000, 0.3
 # Colores con luminancia aproximada igualada (verifícala en tu monitor).
 COLORES = {'A': {'MI': '#3A7BD5', 'ME': '#BE6E14'},
            'B': {'MI': '#BE6E14', 'ME': '#3A7BD5'}}
-IMAGENES = {'MI': 'Interfaz MI ME\MI.png', 'ME': 'Interfaz MI ME\ME.png'}   # p.ej. {'MI': 'img/mi.png', 'ME': 'img/me.png'}
 
-TEXTO_INSTR = ("BLOQUE {b}\n\n"
-               "+  mira la cruz, sin moverte\n"
-               "Beep + cue  ->  {mi} = IMAGINA   |   {me} = EJECUTA\n"
-               "Pantalla negra  ->  reposo (puedes parpadear)\n\n"
-               "Pulsa ESPACIO para comenzar   (ESC para abortar)")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+IMAGENES = {
+    'MI': os.path.join(BASE_DIR, 'MI.png'),
+    'ME': os.path.join(BASE_DIR, 'ME.png')
+}   
+
+TEXTO_INSTR = (
+    "Mira la cruz y evita moverte.\n"
+    "Al escuchar el beep, observa el cue.\n"
+    "{mi} = IMAGINA   |   {me} = EJECUTA\n"
+    "Durante la pantalla negra, descansa.\n"
+    "Puedes parpadear durante el reposo."
+)
+
+FUENTE = 'Segoe UI'  # 'Arial', 'Helvetica', 'Verdana', 'Tahoma', 'Calibri  '
+
 
 
 class Abortar(Exception):
@@ -81,6 +92,17 @@ def secuencia_bloque(n, rng):
                    for i in range(len(s) - MAX_REPETIDAS)):
             return s
 
+def lanzar_visor_eeg(stream_name):
+    """Abre ventanaeeg.py como proceso independiente."""
+    ruta = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ventanaeeg.py')
+    if not os.path.exists(ruta):
+        print(f"[AVISO] No se encontró {ruta}; no se abre el visor EEG")
+        return None
+    try:
+        return subprocess.Popen([sys.executable, ruta, stream_name])
+    except Exception as e:
+        print(f"[AVISO] No se pudo abrir el visor EEG: {e}")
+        return None
 
 def menu_inicio(a):
     """Diálogo de inicio: edita los argumentos de sesión en el namespace `a`.
@@ -136,6 +158,8 @@ def main():
     ap.add_argument('--seed', type=int, default=None)
     ap.add_argument('--ventana', action='store_true', help='no pantalla completa (pruebas)')
     ap.add_argument('--sin_menu', action='store_true', help='omite el menú de inicio')
+    ap.add_argument('--sin_visor', action='store_true', help='no abrir la ventana de EEG en tiempo real')
+    ap.add_argument('--pantalla_eeg', type=int, default=None, help='(informativo) el visor ya elige monitor por sí mismo')
     a = ap.parse_args()
     if not a.sin_menu:
         a = menu_inicio(a)
@@ -200,7 +224,107 @@ def main():
         else:
             for _ in range(nf(segundos)):
                 t.draw(); win.flip()
+                
+    def pantalla_inicio(msg):
+        """Muestra MI y ME junto con las instrucciones iniciales."""
 
+        titulo = visual.TextStim(
+            win,
+            text=f'BLOQUE {a.bloque}',
+            pos=(0, 0.42),
+            height=0.065,
+            color='#4FC3F7',
+            font=FUENTE,
+            bold=True
+        )
+
+        panel = visual.Rect(
+            win,
+            pos=(0, -0.02),
+            width=1.50,
+            height=0.78,
+            fillColor='#181818',
+            lineColor='#4FC3F7',
+            lineWidth=2
+        )
+
+        # Imagen de imaginación motora
+        imagen_mi = visual.ImageStim(
+            win,
+            image=IMAGENES['MI'],
+            pos=(-0.30, 0.13),
+            size=(0.27, 0.27)
+        )
+
+        # Imagen de movimiento ejecutado
+        imagen_me = visual.ImageStim(
+            win,
+            image=IMAGENES['ME'],
+            pos=(0.30, 0.13),
+            size=(0.27, 0.27)
+        )
+
+        etiqueta_mi = visual.TextStim(
+            win,
+            text='IMAGINA',
+            pos=(-0.30, -0.055),
+            height=0.032,
+            color="#EDF2F6",
+            font=FUENTE,
+            bold=True
+        )
+
+        etiqueta_me = visual.TextStim(
+            win,
+            text='EJECUTA',
+            pos=(0.30, -0.055),
+            height=0.032,
+            color="#EDF2F6",
+            font=FUENTE,
+            bold=True
+        )
+
+        instrucciones = visual.TextStim(
+            win,
+            text=msg,
+            pos=(0, -0.24),
+            height=0.029,
+            color='white',
+            font=FUENTE,
+            wrapWidth=1.25,
+            alignText='center'
+        )
+
+        indicacion = visual.TextStim(
+            win,
+            text='Presiona ESPACIO para comenzar',
+            pos=(0, -0.47),
+            height=0.030,
+            color='#BDBDBD',
+            font=FUENTE
+        )
+
+        # Orden de dibujo: primero el fondo y luego el contenido
+        panel.draw()
+        titulo.draw()
+
+        imagen_mi.draw()
+        imagen_me.draw()
+
+        etiqueta_mi.draw()
+        etiqueta_me.draw()
+
+        instrucciones.draw()
+        indicacion.draw()
+
+        win.flip()
+
+        event.clearEvents()
+        tecla = event.waitKeys(keyList=['space', 'escape'])
+
+        if 'escape' in tecla:
+            raise Abortar()
+    
     def esperar_cierre(msg):
         """Pantalla final: espera ESPACIO (o ESC) sin lanzar Abortar.
         Sirve para pulsar Stop en LabRecorder antes de cerrar el outlet."""
@@ -231,7 +355,9 @@ def main():
         msg = TEXTO_INSTR.format(b=a.bloque, mi=mi, me=me)
         if not eeg_ok:
             msg = "[!] EEG NO DETECTADO\n\n" + msg
-        texto(msg)
+        if not a.sin_visor:
+            visor = lanzar_visor_eeg(a.eeg_stream)
+        pantalla_inicio(msg)
         fase(nf(1.0), nada, 'block_start')
 
         for k, clase in enumerate(seq, 1):
@@ -272,6 +398,8 @@ def main():
             if msg_final:
                 esperar_cierre(msg_final)
         finally:
+            if visor is not None and visor.poll() is None:
+                visor.terminate()
             win.close()
             core.quit()
 
