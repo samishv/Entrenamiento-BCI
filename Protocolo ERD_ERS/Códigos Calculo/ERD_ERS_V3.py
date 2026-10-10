@@ -48,8 +48,8 @@ from Procesamiento_Funciones import (
 plt.close("all")
 
 CARPETA_DATOS = Path(
-    r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-    r"\SV1\MI"
+    r"C:\Users\VAIO\Desktop\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+    r"\SV3\MI"
 )
 PATRON_ARCHIVOS = "*.npy"          # se usan todos los que existan en la carpeta
 CARPETA_RESULTADOS = CARPETA_DATOS / "Resultados_ERD_ERS"
@@ -74,8 +74,8 @@ POSICIONES_CANALES = {
 # Ejemplo alterno:  (0, 2) / (2, 5) / (5, 7)
 
 T_REPOSO_INICIAL = (0.0, 3.0)
-T_TAREA          = (3.0, 18.0)
-T_REPOSO_FINAL   = (18.0, 21.0)
+T_TAREA          = (3.0, 8.0)
+T_REPOSO_FINAL   = (8.0, 11.0)
 
 # El analisis termina en T_REPOSO_FINAL[1]. Si un archivo es mas largo se recorta
 # ahi; si es mas corto se omite (con aviso).
@@ -163,7 +163,7 @@ LIMITES_ERD_ERS = None             # p. ej. (-100, 200) en %; None = automatico
 # =============================================================================
 
 GUARDAR_FIGURAS = True
-MOSTRAR_FIGURAS = True
+MOSTRAR_FIGURAS = False
 MAXIMIZAR_FIGURAS = True
 
 ESTILO_OSCURO = True

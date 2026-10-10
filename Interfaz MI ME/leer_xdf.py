@@ -58,13 +58,13 @@ import pyxdf
 MODO = 'procesar'        # 'procesar' = recortar .xdf | 'visualizar' = graficar .npy
 
 # --- Entrada (modo 'procesar') -----------------------------------------------
-RUTA_ARCHIVO_XDF = r"C:\Users\lipsp\Documents\GitHub\Entrenamiento-BCI\Protocolo ERD_ERS\Signals\SK1\D0_B1.xdf"
+RUTA_ARCHIVO_XDF = r"C:\Users\VAIO\Desktop\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals\SV3\D0_B1.xdf"
 RUTAS_XDF = [RUTA_ARCHIVO_XDF]   # lista de archivos .xdf o patrones glob (ej. r"...\SVX\*.xdf")
 
 # --- Salida de los trials .npy -----------------------------------------------
 # Se guardan en <RUTA_SIGNALS>\<CARPETA_SUJETO>\{ME, MI, CSV}
-RUTA_SIGNALS = r"C:\Users\lipsp\Documents\GitHub\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-CARPETA_SUJETO = 'SK1'           # SV1, SV2, SK1, ... | None = usar el nombre de la carpeta del .xdf
+RUTA_SIGNALS = r"C:\Users\VAIO\Desktop\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+CARPETA_SUJETO = 'SV3'           # SV1, SV2, SK1, ... | None = usar el nombre de la carpeta del .xdf
 GUARDAR_NPY = True               # guardar un .npy por trial
 
 # --- Salida de los .npz ------------------------------------------------------
@@ -309,7 +309,7 @@ def segmentar(marcadores):
 
 # ─── Épocas ───────────────────────────────────────────────────────────────────
 def extraer_epocas(eeg_t, eeg_x, trials, fs, tipo='fix_a_reposo3',
-                   dur_nominal=11.0, tol=0.5, tmin=-5.0, tmax=5.0):
+                   dur_nominal=11.0, tol=0.7, tmin=-5.0, tmax=5.0):
     """
     Recorta cada trial por conteo de muestras.
 
