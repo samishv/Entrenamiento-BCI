@@ -166,7 +166,7 @@ def main():
     seed = a.seed if a.seed is not None else int(datetime.now().timestamp())
     rng = random.Random(seed)
     os.makedirs(a.salida, exist_ok=True)
-    base = f"S{a.pid}_{datetime.now():%y%m%d}_MIME_{a.sesion}_{a.bloque}"
+    base = f"{a.pid}_{datetime.now():%y%m%d}_MIME_{a.sesion}_{a.bloque}"
 
     # ── LSL: outlet de marcadores y comprobación del EEG ────────────────────
     outlet = StreamOutlet(StreamInfo('MIME_Markers', 'Markers', 1, 0, 'string',

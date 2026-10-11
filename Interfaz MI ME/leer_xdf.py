@@ -11,9 +11,6 @@ Secuencia de marcadores de cada trial:
     reposo_3s     3 s después de reposo_start (el reposo dura 3 s + 2 s)
 Marcadores de bloque: block_start, block_end, block_abort.
 
-Ventana de análisis principal: fix_start -> reposo_3s = 3 + 5 + 3 = 11 s nominales
-(fija, por eso se pueden apilar todos los trials en un arreglo 3D).
-
 Tipos de recorte (TIPO_RECORTE):
   'fix_a_reposo3'    : [fix_start, fix_start + 11 s)  largo FIJO  (por defecto)
   'jitter_a_reposo3' : [jitter_start, reposo_3s)      largo variable
@@ -21,21 +18,13 @@ Tipos de recorte (TIPO_RECORTE):
                        trial completo (incluye los 2 s finales de reposo); largo variable
   'ventana_cue'      : [cue+TMIN, cue+TMAX)           largo FIJO
 
-TIEMPOS: en todo lo que se guarda (metadatos, CSV, gráficas) el tiempo 0 es el
-INICIO DEL RECORTE; no hay tiempos negativos. Ej. con 'fix_a_reposo3':
-fix_start = 0 s, cue = 3 s, reposo_start = 8 s, reposo_3s = 11 s. Un marcador que
+Un marcador que
 caiga antes del inicio del recorte (p. ej. jitter_start en 'fix_a_reposo3') se
 guarda como NaN.
 
-Salidas:
-  - <salida>/<archivo>_trials.npz        (todos los trials del archivo)
-  - <salida>/dataset_unido.npz           (todos los archivos juntos)
-  - <RUTA_SIGNALS>/<sujeto>/ME/<archivo>_trialXXX_ME.npy   (un .npy por trial,
-    <RUTA_SIGNALS>/<sujeto>/MI/<archivo>_trialXXX_MI.npy    shape = (canales, muestras))
-    <RUTA_SIGNALS>/<sujeto>/CSV/<archivo>_indice_trials.csv (metadatos)
 
-Todo se configura en la sección CONFIGURACIÓN INICIAL (no hay argumentos de
-terminal). Cambia MODO entre 'procesar' (recortar .xdf) y 'visualizar'
+Todo se configura en la sección CONFIGURACIÓN INICIAL.
+Cambia MODO entre 'procesar' (recortar .xdf) y 'visualizar'
 (graficar .npy ya guardados) y ejecuta: python cortar_xdf.py
 
 Nota: con los recortes de largo variable el .npz contiene un arreglo de objetos,
@@ -52,28 +41,29 @@ import numpy as np
 import pyxdf
 
 # ==============================================================================
-# CONFIGURACIÓN INICIAL (Modifica aquí tus rutas y parámetros)
+# CONFIGURACIÓN INICIAL 
 # ==============================================================================
-# --- Modo de ejecución -------------------------------------------------------
-MODO = 'procesar'        # 'procesar' = recortar .xdf | 'visualizar' = graficar .npy
+MODO = 'visualizar'        # 'procesar' = recortar .xdf | 'visualizar' = graficar .npy
 
 # --- Entrada (modo 'procesar') -----------------------------------------------
-RUTA_ARCHIVO_XDF = r"C:\Users\VAIO\Desktop\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals\SV3\D0_B1.xdf"
-RUTAS_XDF = [RUTA_ARCHIVO_XDF]   # lista de archivos .xdf o patrones glob (ej. r"...\SVX\*.xdf")
+RUTA_ARCHIVO_XDF = r"Protocolo ERD_ERS\Signals\SV3\*.xdf"
+RUTAS_XDF = [RUTA_ARCHIVO_XDF]   # lista de archivos .xdf o patrones glob (ej. r"...\SVX\*.xdf").
+                                 # Se procesan todos, en orden natural (B1, B2, ..., B10).
 
 # --- Salida de los trials .npy -----------------------------------------------
-# Se guardan en <RUTA_SIGNALS>\<CARPETA_SUJETO>\{ME, MI, CSV}
-RUTA_SIGNALS = r"C:\Users\VAIO\Desktop\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-CARPETA_SUJETO = 'SV3'           # SV1, SV2, SK1, ... | None = usar el nombre de la carpeta del .xdf
+# Se guardan en <RUTA_SIGNALS>\<CARPETA_SUJETO>\{ME, MI, CSV, NPZ}
+RUTA_SIGNALS = r"Protocolo ERD_ERS\Signals"
+CARPETA_SUJETO = 'SV3'           # SV1, SV2, SK1, ... = todos los .xdf van a ese sujeto
+                                 # None = cada .xdf va a la carpeta (sujeto) donde está guardado
 GUARDAR_NPY = True               # guardar un .npy por trial
 
 # --- Salida de los .npz ------------------------------------------------------
-CARPETA_SALIDA = os.path.join(RUTA_SIGNALS, CARPETA_SUJETO)   # carpeta donde se guardan los .npz
+CARPETA_SALIDA = os.path.join(RUTA_SIGNALS, CARPETA_SUJETO) 
 
 # --- Tipo de recorte ---------------------------------------------------------
 TIPO_RECORTE = 'fix_a_reposo3'   # 'fix_a_reposo3' | 'jitter_a_reposo3' | 'jitter_a_jitter' | 'ventana_cue'
 DURACION_VENTANA = 11.0          # 'fix_a_reposo3': largo fijo en s (3 fijación + 5 tarea + 3 reposo)
-TOL_DURACION = 0.5               # 'fix_a_reposo3': se descarta el trial si (reposo_3s - fix_start)
+TOL_DURACION = 0.7               # 'fix_a_reposo3': se descarta el trial si (reposo_3s - fix_start)
                                  #                  difiere del nominal en más de esto (s)
 TMIN = -5.0                      # solo 'ventana_cue': inicio respecto al cue (s); solo sirve para
 TMAX = 5.0                       # cortar: en lo guardado el tiempo 0 es el inicio del recorte
@@ -92,9 +82,9 @@ NOMBRE_MARCADORES = 'MIME_Markers'
 # patrones glob. Los marcadores y fs se leen de CSV\<archivo>_indice_trials.csv;
 # sin ese CSV el eje se dibuja en muestras y sin marcadores.
 RUTAS_NPY_VISUALIZAR = [
-    os.path.join(RUTA_SIGNALS, 'SK1'),                    # todo el sujeto (ME y MI)
-    # os.path.join(RUTA_SIGNALS, 'SK1', 'MI'),            # solo los MI
-    # os.path.join(RUTA_SIGNALS, 'SK1', 'MI', 'D1_B1_trial000_MI.npy'),   # un trial
+    os.path.join(RUTA_SIGNALS, CARPETA_SUJETO),                    # todo el sujeto (ME y MI)
+    # os.path.join(RUTA_SIGNALS, 'SV1', 'MI'),            # solo los MI
+    # os.path.join(RUTA_SIGNALS, 'SV1', 'MI', 'D1_B1_trial000_MI.npy'),   # un trial
 ]
 GUARDAR_FIG = False              # True = guarda PNG junto a cada .npy en vez de abrir ventanas
 QUITAR_DC = True                 # restar la media de cada canal (solo para graficar)
@@ -122,11 +112,7 @@ _RE_NPY = re.compile(r'^(?P<base>.+)_trial\d+_[^_]+\.npy$')
 
 
 def _nombres_canales(canales):
-    """
-    Nombres de los canales extraídos. CANALES se corresponde por posición con
-    INDICES (el índice 6 'NC' se omite), así que el índice 7 del stream es 'C4'.
-    Si se piden otros índices distintos en cantidad, se usan nombres genéricos.
-    """
+
     if len(canales) == len(CANALES):
         return list(CANALES)
     return [f"Ch{c}" for c in canales]
@@ -309,7 +295,7 @@ def segmentar(marcadores):
 
 # ─── Épocas ───────────────────────────────────────────────────────────────────
 def extraer_epocas(eeg_t, eeg_x, trials, fs, tipo='fix_a_reposo3',
-                   dur_nominal=11.0, tol=0.7, tmin=-5.0, tmax=5.0):
+                   dur_nominal=11.0, tol=0.5, tmin=-5.0, tmax=5.0):
     """
     Recorta cada trial por conteo de muestras.
 
@@ -393,10 +379,6 @@ def guardar_trials_npy(res, nombre_base, carpeta_sujeto):
         <carpeta_sujeto>/MI/<nombre_base>_trial001_MI.npy
         <carpeta_sujeto>/CSV/<nombre_base>_indice_trials.csv
 
-    El número de trial es el del bloque (por eso en cada carpeta de clase puede
-    haber saltos). Antes de guardar se borran los .npy previos de ese mismo
-    archivo para que no queden trials viejos mezclados con los nuevos.
-
     El CSV guarda fs, la duración y la posición de cada marcador en segundos
     desde el inicio del recorte (tiempo 0); NaN si el marcador cae antes del inicio.
     Devuelve la carpeta del sujeto.
@@ -420,7 +402,7 @@ def guardar_trials_npy(res, nombre_base, carpeta_sujeto):
                    + ['t_next_jitter_s', 'duracion_s', 'fs', 'canales'])
         for i in range(len(res['X'])):
             clase = str(res['clase'][i])
-            nombre_npy = f"{nombre_base}_trial{i:03d}_{clase}.npy"
+            nombre_npy = f"{nombre_base}_trial{(i+1):03d}_{clase}.npy"
             carpeta_clase = os.path.join(carpeta_sujeto, clase)
             os.makedirs(carpeta_clase, exist_ok=True)
             np.save(os.path.join(carpeta_clase, nombre_npy), res['X'][i])
@@ -622,6 +604,110 @@ def procesar(ruta, a):
     return res
 
 
+# ─── Procesamiento por lote ───────────────────────────────────────────────────
+def _clave_natural(ruta):
+    """Orden natural: ..._B2 antes que ..._B10."""
+    return [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', ruta)]
+
+
+def expandir_archivos(patrones):
+    """Expande patrones glob; devuelve rutas únicas, ordenadas de forma natural."""
+    rutas = set()
+    for p in patrones:
+        rutas.update(os.path.abspath(r) for r in glob.glob(p) if os.path.isfile(r))
+    return sorted(rutas, key=_clave_natural)
+
+
+def _sujeto_de(ruta, sujeto_fijo):
+    return sujeto_fijo or os.path.basename(os.path.dirname(os.path.abspath(ruta)))
+
+
+def procesar_lote(archivos, a):
+    """
+    Procesa varios .xdf. Un archivo que falla no detiene el lote: se informa y
+    se sigue con el siguiente. Devuelve True si se procesó al menos uno.
+    """
+    # Dos archivos con el mismo nombre y el mismo sujeto se pisarían al guardar
+    destinos = {}
+    for r in archivos:
+        clave = (_sujeto_de(r, a.sujeto), os.path.splitext(os.path.basename(r))[0])
+        destinos.setdefault(clave, []).append(r)
+    repetidos = {k: v for k, v in destinos.items() if len(v) > 1}
+    if repetidos:
+        print("Error: hay archivos con el mismo nombre y el mismo sujeto de destino; "
+              "uno sobrescribiría al otro:")
+        for (suj, base), rutas in repetidos.items():
+            print(f"  sujeto '{suj}', archivo '{base}':")
+            for r in rutas:
+                print(f"    - {r}")
+        print("Solución: usa CARPETA_SUJETO = None (cada .xdf va a su propia carpeta) "
+              "o renombra los archivos.")
+        return False
+
+    os.makedirs(a.salida, exist_ok=True)
+    datasets, fallidos = [], []
+
+    for idx, ruta in enumerate(archivos):
+        sujeto = _sujeto_de(ruta, a.sujeto)
+        nombre_base = os.path.splitext(os.path.basename(ruta))[0]
+        try:
+            resultado = procesar(ruta, a)
+            if resultado is None:
+                fallidos.append((ruta, 'no se obtuvo ningún trial válido'))
+                continue
+
+            carpeta_npz = os.path.join(a.salida, "NPZ")
+            os.makedirs(carpeta_npz, exist_ok=True)
+            ruta_out = os.path.join(carpeta_npz, f"{nombre_base}_trials.npz")
+            np.savez_compressed(ruta_out, **resultado)
+            print(f"  -> Guardado individual: {ruta_out}")
+
+            if a.guardar_npy:
+                guardar_trials_npy(resultado, nombre_base, os.path.join(a.ruta_signals, sujeto))
+        except Exception as e:
+            print(f"  [ERROR] {os.path.basename(ruta)}: {type(e).__name__}: {e}")
+            fallidos.append((ruta, f"{type(e).__name__}: {e}"))
+            continue
+
+        n = len(resultado['X'])
+        resultado['bloque'] = np.full(n, idx, dtype=int)
+        resultado['archivo'] = np.full(n, nombre_base, dtype=object)
+        resultado['sujeto'] = np.full(n, sujeto, dtype=object)
+        datasets.append(resultado)
+
+    # ---- Dataset unido (solo archivos compatibles con el primero) ----
+    if datasets:
+        ref = datasets[0]
+        compatibles = []
+        for d in datasets:
+            if d['fs'] == ref['fs'] and list(d['ch_names']) == list(ref['ch_names']):
+                compatibles.append(d)
+            else:
+                print(f"  [AVISO] {d['archivo'][0]} no entra en dataset_unido.npz: "
+                      f"fs o canales distintos a los de {ref['archivo'][0]}")
+
+        unido = {}
+        for llave in ref.keys():
+            if llave in ['fs', 'tmin', 'tmax', 'ch_names', 'modo_recorte']:
+                unido[llave] = ref[llave]
+            else:
+                unido[llave] = np.concatenate([d[llave] for d in compatibles], axis=0)
+
+        ruta_unido = os.path.join(a.salida, "NPZ", 'dataset_unido.npz')
+        np.savez_compressed(ruta_unido, **unido)
+        print(f"\n=== PROCESO TERMINADO ===")
+        print(f"Archivos procesados: {len(datasets)} de {len(archivos)}")
+        print(f"Dataset combinado guardado en: {ruta_unido} (Total trials: {len(unido['X'])})")
+    else:
+        print("\nNo se pudo generar ningún dataset. Revisa las alertas impresas arriba.")
+
+    if fallidos:
+        print(f"\nArchivos con problemas ({len(fallidos)}):")
+        for r, motivo in fallidos:
+            print(f"  - {os.path.basename(r)}: {motivo}")
+    return len(datasets) > 0
+
+
 # ─── Bloque Principal de Ejecución ────────────────────────────────────────────
 if __name__ == '__main__':
     if TIPO_RECORTE not in TIPOS_RECORTE:
@@ -632,6 +718,7 @@ if __name__ == '__main__':
         archivos=RUTAS_XDF, salida=CARPETA_SALIDA, tmin=TMIN, tmax=TMAX,
         canales=INDICES, eeg_stream=EEG_STREAM, eeg_indice=EEG_STREAM_INDICE,
         tipo_recorte=TIPO_RECORTE, dur_ventana=DURACION_VENTANA, tol_duracion=TOL_DURACION,
+        sujeto=CARPETA_SUJETO, ruta_signals=RUTA_SIGNALS, guardar_npy=GUARDAR_NPY,
     )
 
     # Modo visualización: no toca los .xdf
@@ -643,43 +730,12 @@ if __name__ == '__main__':
         print(f"Error: MODO debe ser 'procesar' o 'visualizar' (actual: {MODO!r})")
         sys.exit(1)
 
-    lista_archivos = []
-    for f in args.archivos:
-        lista_archivos.extend(glob.glob(f))
-
+    lista_archivos = expandir_archivos(args.archivos)
     if not lista_archivos:
-        print(f"Error: No se encontró el archivo en la ruta especificada: {args.archivos[0]}")
+        print(f"Error: No se encontró ningún archivo en: {args.archivos}")
         sys.exit(1)
 
-    os.makedirs(args.salida, exist_ok=True)
-    datasets = []
-
-    for idx, ruta in enumerate(lista_archivos):
-        resultado = procesar(ruta, args)
-        if resultado is not None:
-            nombre_base = os.path.splitext(os.path.basename(ruta))[0]
-            ruta_out = os.path.join(args.salida, f"{nombre_base}_trials.npz")
-            np.savez_compressed(ruta_out, **resultado)
-            print(f"  -> Guardado individual: {ruta_out}")
-
-            if GUARDAR_NPY:
-                sujeto = CARPETA_SUJETO or os.path.basename(os.path.dirname(os.path.abspath(ruta)))
-                guardar_trials_npy(resultado, nombre_base, os.path.join(RUTA_SIGNALS, sujeto))
-
-            resultado['bloque'] = np.full(len(resultado['X']), idx, dtype=int)
-            datasets.append(resultado)
-
-    if len(datasets) > 0:
-        unido = {}
-        for llave in datasets[0].keys():
-            if llave in ['fs', 'tmin', 'tmax', 'ch_names', 'modo_recorte']:
-                unido[llave] = datasets[0][llave]
-            else:
-                unido[llave] = np.concatenate([d[llave] for d in datasets], axis=0)
-
-        ruta_unido = os.path.join(args.salida, 'dataset_unido.npz')
-        np.savez_compressed(ruta_unido, **unido)
-        print(f"\n=== PROCESO TERMINADO ===")
-        print(f"Dataset combinado guardado en: {ruta_unido} (Total trials: {len(unido['X'])})")
-    else:
-        print("\nNo se pudo generar ningún dataset. Revisa las alertas de marcadores impresas arriba.")
+    print(f"{len(lista_archivos)} archivo(s) .xdf a procesar:")
+    for r in lista_archivos:
+        print(f"  - {r}")
+    sys.exit(0 if procesar_lote(lista_archivos, args) else 1)
