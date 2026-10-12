@@ -20,12 +20,12 @@ plt.close('all')
 # CONFIGURACIÓN
 # ─────────────────────────────────────────────────────────────────────────────
 
-RUTA_NPY = r"C:\Users\lipsp\Documents\GitHub\Entrenamiento-BCI\Trials\npy\D1_B1\D1_B1_trial005_MI.npy"
+RUTA_NPY = r"C:\Users\VAIO\Desktop\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals\SK1\MI\D0_B1_trial025_MI.npy"
 
 FS = 250
 
 SEGUNDO_INICIO = 0
-SEGUNDO_FIN = 19
+SEGUNDO_FIN = 11
 
 TICKAZOS_LABEL = 3.0
 
