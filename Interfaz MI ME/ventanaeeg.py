@@ -61,7 +61,7 @@ class EEGConGrafica(EEGAcquisitionManager):
 
 
 # ─── Filtro (solo visualización) ──────────────────────────────────────────────
-def filtrar(y, lowcut=1, highcut=40, fs=FS, order=4):
+def filtrar(y, lowcut=5, highcut=35, fs=FS, order=4):
     nyq = fs * 0.5
     b, a = butter(order, [lowcut / nyq, highcut / nyq], btype='band')
     return filtfilt(b, a, y)

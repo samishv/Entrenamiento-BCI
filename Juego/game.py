@@ -19,9 +19,9 @@ from menu import MainMenu, ConfigMenu, LevelsMenu
 # =============================================================================
 
 # ===== JUGABILIDAD =====
-AUTO_SPEED = 2                      # Velocidad del autorun (px por frame) ERA 2
+AUTO_SPEED = 10                      # Velocidad del autorun (px por frame) ERA 2
 FAIL_RETURN_SPEED = 1.2             # Velocidad del autorun mientras el jugador se recupera de un fallo ERA 1.2
-TOTAL_CHALLENGES = 10               # Cantidad de desafíos (globos) por nivel
+TOTAL_CHALLENGES = 5               # Cantidad de desafíos (globos) por nivel
 FIRST_STOP_TILE = 38                # Tile donde se detiene el jugador en el primer desafío
 CHALLENGE_SPACING_TILES = 60        # Distancia (en tiles) entre un desafío y el siguiente
 MAX_PRESSES = 1                     # Pulsaciones necesarias para reventar un globo
@@ -31,7 +31,7 @@ FPS = 60                            # Cuadros por segundo del juego
 
 # ===== TIEMPO PARA PULSAR (segundos) =====
 LEVEL_TIME_LIMITS = {               # {id_nivel: segundos}
-    1: 2,
+    1: 5,
     2: 1,
 }
 DEFAULT_LEVEL_TIME_LIMIT = 2        # Tiempo para los niveles que no estén en LEVEL_TIME_LIMITS

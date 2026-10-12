@@ -43,7 +43,7 @@ import pyxdf
 # ==============================================================================
 # CONFIGURACIÓN INICIAL 
 # ==============================================================================
-MODO = 'visualizar'        # 'procesar' = recortar .xdf | 'visualizar' = graficar .npy
+MODO = 'procesar'        # 'procesar' = recortar .xdf | 'visualizar' = graficar .npy
 
 # --- Entrada (modo 'procesar') -----------------------------------------------
 RUTA_ARCHIVO_XDF = r"Protocolo ERD_ERS\Signals\SV3\*.xdf"
