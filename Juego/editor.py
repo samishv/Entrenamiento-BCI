@@ -119,6 +119,19 @@ class Editor:
                         self.right_clicking = False
                         
                 if event.type == pygame.KEYDOWN:
+                    
+                    if event.key in (pygame.K_4, pygame.K_KP4):
+                        self.scroll[0] -= 30 * self.tilemap.tile_size
+
+                    if event.key in (pygame.K_6, pygame.K_KP6):
+                        self.scroll[0] += 30 * self.tilemap.tile_size
+                        
+                    if event.key in (pygame.K_7, pygame.K_KP7):
+                        self.scroll[0] -= 60 * self.tilemap.tile_size
+
+                    if event.key in (pygame.K_9, pygame.K_KP9):
+                        self.scroll[0] += 60 * self.tilemap.tile_size
+                        
                     if event.key == pygame.K_a:
                         self.movement[0] = True
                     if event.key == pygame.K_d:

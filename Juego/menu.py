@@ -29,7 +29,7 @@ class Menu:
 class MainMenu(Menu):
     def __init__(self, game):
         super().__init__(game)
-        self.options = ["Niveles", "Configuracion"]
+        self.options = ["NIVELES", "CONFIGURACION"]
         self.index = 0
 
     def display_menu(self):
@@ -71,11 +71,11 @@ class MainMenu(Menu):
         if self.game.START_KEY:
             choice = self.options[self.index]
 
-            if choice == "Niveles":
+            if choice == "NIVELES":
                 self.game.curr_menu = self.game.levels_menu
                 self.run_display = False
 
-            elif choice == "Configuracion":
+            elif choice == "CONFIGURACION":
                 self.game.curr_menu = self.game.config_menu
                 self.run_display = False
 
@@ -84,7 +84,7 @@ class MainMenu(Menu):
 class ConfigMenu(Menu):
     def __init__(self, game):
         super().__init__(game)
-        self.state = "Volver"               # opciones: "BT", "MODO" o "Volver"
+        self.state = "MODO"  # opciones: "BT", "MODO", "COLOR" o "Volver"
         
         self.nickname_buffer = ""
         self.max_nickname_len = 20
@@ -125,7 +125,7 @@ class ConfigMenu(Menu):
 
             # ── Nickname label ──────────────────────────────
             nick_label = self.game.render_bitmap_text_surface(
-                "Nickname", self.game.bitmap_font_white,
+                "NICKNAME", self.game.bitmap_font_white,
                 spacing=self.game.bitmap_spacing
             )
             self.game.display.blit(
@@ -160,87 +160,130 @@ class ConfigMenu(Menu):
                     caret_rect = caret_surf.get_rect(center=(mid_w, typed_y))
                 self.game.display.blit(caret_surf, caret_rect)
 
-            # ── Switch de Ariadne ───────────────────────────
-            bt_y = 175 + self.offset_y
-            self._draw_bt_switch(mid_w, bt_y)
-            
-            # ── Selector de modo de mano ────────────────────
-            modo_y = 202 + self.offset_y
-            modo_rect = self._draw_hand_mode(mid_w, modo_y)
-            
-            # ── Opción Volver ───────────────────────────────
+            # ── Fila horizontal de configuracion ─────────────
+
+            options_y = 190 + self.offset_y
+
+            # Posiciones horizontales provisionales.
+            bt_x = 100
+            modo_x = 250
+            color_x = 400
+
+            # Dibujar las tres opciones.
+            bt_rect = self._draw_bt_switch(bt_x, options_y)
+            modo_rect = self._draw_hand_mode(modo_x, options_y)
+            color_rect = self._draw_player_color(color_x, options_y)
+
+            # ── Opcion Volver ────────────────────────────────
+
             volver = self.game.render_bitmap_text_surface(
-                "Volver",
+                "VOLVER",
                 self.game.bitmap_font_white,
                 spacing=self.game.bitmap_spacing
             )
-            
+
             volver_rect = volver.get_rect(
                 center=(mid_w, 235 + self.offset_y)
             )
-            
+
             self.game.display.blit(volver, volver_rect)
-            
-            # ── Cursor de la opción seleccionada ────────────
+
+            # ── Cursor de la opcion seleccionada ─────────────
+
             if self.state == "BT":
-                self.draw_cursor(self._bt_option_rect)
-            
+                self.draw_cursor(bt_rect)
+
             elif self.state == "MODO":
                 self.draw_cursor(modo_rect)
-            
-            elif self.state == "Volver":
+
+            elif self.state == "COLOR":
+                self.draw_cursor(color_rect)
+
+            elif self.state == "VOLVER":
                 self.draw_cursor(volver_rect)
-            
+
             self.blit_screen()
 
         pygame.key.stop_text_input()
         pygame.key.set_repeat()
 
     # ── Dibuja el switch ────────────────────────────────────
-    def _draw_bt_switch(self, mid_w, y):
+    def _draw_bt_switch(self, x, y):
         """
-        Dibuja:  Bluetooth  [OFF]   o   Bluetooth  [ON ]
-        El rectángulo cambia de color según el estado.
+        Dibuja la opcion ARIADNE: OFF o ARIADNE: ON
+        centrada en la posicion recibida.
         """
-        # Label izquierdo
+        enabled = self.game.bluetooth_enabled
+
+        text_str = "ON" if enabled else "OFF"
+        box_color = (0, 200, 80) if enabled else (0, 0, 0)
+
+        # Texto ARIADNE:
         label = self.game.render_bitmap_text_surface(
-            "ARIADNE", self.game.bitmap_font_white,
+            "ARIADNE",
+            self.game.bitmap_font_white,
             spacing=self.game.bitmap_spacing
         )
-        label_rect = label.get_rect(midright=(mid_w +10, y))
+
+        # Texto ON/OFF
+        switch_text = self.game.render_bitmap_text_surface(
+            text_str,
+            self.game.bitmap_font_white,
+            spacing=self.game.bitmap_spacing
+        )
+
+        spacing_between = 4
+        box_padding_x = 4
+        box_padding_y = 2
+
+        box_w = switch_text.get_width() + (box_padding_x * 2)
+        box_h = switch_text.get_height() + (box_padding_y * 2)
+
+        total_width = (
+            label.get_width()
+            + spacing_between
+            + box_w
+        )
+
+        start_x = x - (total_width // 2)
+
+        label_rect = label.get_rect(
+            midleft=(start_x, y)
+        )
+
+        box_rect = pygame.Rect(
+            label_rect.right + spacing_between,
+            y - (box_h // 2),
+            box_w,
+            box_h
+        )
+
         self.game.display.blit(label, label_rect)
 
-        # Caja del switch
-        enabled = self.game.bluetooth_enabled
-        box_color  = (0, 200, 80)  if enabled else (0, 0, 0)
-        text_str   = "ON " if enabled else "OFF"
-
-        box_w, box_h = 36, 14          # ajusta a la escala de tu display
-        box_rect = pygame.Rect(0, 0, box_w, box_h)
-        box_rect.midleft = (mid_w + 20, y)
-        pygame.draw.rect(self.game.display, box_color, box_rect, border_radius=3)
-
-        switch_text = self.game.render_bitmap_text_surface(
-            text_str, self.game.bitmap_font_white,
-            spacing=self.game.bitmap_spacing
+        pygame.draw.rect(
+            self.game.display,
+            box_color,
+            box_rect,
+            border_radius=3
         )
+
         self.game.display.blit(
             switch_text,
             switch_text.get_rect(center=box_rect.center)
         )
 
-        # Guardamos el rect para check_input (detección de cursor opcional)
+        option_rect = label_rect.union(box_rect)
+
         self._bt_rect = box_rect
+        self._bt_option_rect = option_rect
+
+        return option_rect
         
-        # Rectángulo completo de la opción:
-        self._bt_option_rect = label_rect.union(box_rect)
-        
-    def _draw_hand_mode(self, mid_w, y):
+    def _draw_hand_mode(self, x, y):
         """
-        Dibuja el texto MODO: DIESTRO o MODO: ZURDO.
-        También devuelve su rectángulo para colocar el cursor.
+        Dibuja unicamente DIESTRO o ZURDO.
         """
-        text = f"MODO: {self.game.hand_mode}"
+        text = self.game.hand_mode
     
         mode_surface = self.game.render_bitmap_text_surface(
             text,
@@ -249,7 +292,7 @@ class ConfigMenu(Menu):
         )
     
         mode_rect = mode_surface.get_rect(
-            center=(mid_w, y)
+            center=(x, y)
         )
     
         self.game.display.blit(
@@ -259,40 +302,116 @@ class ConfigMenu(Menu):
     
         return mode_rect
 
+    def _draw_player_color(self, x, y):
+        """
+        Dibuja unicamente el nombre del color seleccionado.
+        El cuadro de color se conserva debajo de las letras.
+        """
+    
+        # Crear el texto con el nombre del color.
+        color_surface = self.game.render_bitmap_text_surface(
+            self.game.player_color,
+            self.game.bitmap_font_white,
+            spacing=self.game.bitmap_spacing
+        )
+    
+        # Espacio adicional alrededor de las letras.
+        padding_x = 4
+        padding_y = 2
+    
+        # El cuadro se adapta al tamaño del nombre del color.
+        color_box_width = color_surface.get_width() + (padding_x * 2)
+        color_box_height = color_surface.get_height() + (padding_y * 2)
+    
+        # Centrar el cuadro en la posicion recibida.
+        color_box_rect = pygame.Rect(
+            x - (color_box_width // 2),
+            y - (color_box_height // 2),
+            color_box_width,
+            color_box_height
+        )
+    
+        # Obtener el color correspondiente a la gama seleccionada.
+        background_color = self.game.get_player_menu_color()
+    
+        # Dibujar primero el cuadro de color.
+        pygame.draw.rect(
+            self.game.display,
+            background_color,
+            color_box_rect,
+            border_radius=3
+        )
+    
+        # Dibujar el nombre del color encima del cuadro.
+        color_text_rect = color_surface.get_rect(
+            center=color_box_rect.center
+        )
+    
+        self.game.display.blit(
+            color_surface,
+            color_text_rect
+        )
+    
+        # Este rectangulo se usa para colocar el cursor de seleccion.
+        return color_box_rect
+
     def check_input(self):
-        # Orden vertical de las opciones.
-        options = ["BT", "MODO", "Volver"]
-    
-        # Localizar la opción actualmente seleccionada.
-        current_index = options.index(self.state)
-    
-        # Bajar a la siguiente opción.
-        if self.game.DOWN_KEY:
-            self.state = options[
-                (current_index + 1) % len(options)
-            ]
-    
-        # Subir a la opción anterior.
-        elif self.game.UP_KEY:
-            self.state = options[
-                (current_index - 1) % len(options)
-            ]
-    
-        # Ejecutar la opción seleccionada.
+        """
+        Navegacion visual del menu:
+
+        BT  <->  MODO  <->  COLOR
+                  |
+                VOLVER
+        """
+
+        top_options = ["BT", "MODO", "COLOR"]
+
+        # ── Navegacion horizontal ────────────────────────────
+
+        if self.state in top_options:
+            current_index = top_options.index(self.state)
+
+            if self.game.RIGHT_KEY:
+                self.state = top_options[
+                    (current_index + 1) % len(top_options)
+                ]
+
+            elif self.game.LEFT_KEY:
+                self.state = top_options[
+                    (current_index - 1) % len(top_options)
+                ]
+
+            # Desde cualquier opcion superior, abajo va a Volver.
+            elif self.game.DOWN_KEY:
+                self.state = "VOLVER"
+
+        # ── Navegacion desde Volver ──────────────────────────
+
+        elif self.state == "VOLVER":
+
+            # Arriba siempre regresa a la opcion central MODO.
+            if self.game.UP_KEY:
+                self.state = "MODO"
+
+        # ── Ejecutar la opcion seleccionada ──────────────────
+
         if self.game.START_KEY:
-    
+
             if self.state == "BT":
                 self.game.bluetooth_enabled = (
                     not self.game.bluetooth_enabled
                 )
-    
+
             elif self.state == "MODO":
                 self.game.toggle_hand_mode()
-    
-            elif self.state == "Volver":
+
+            elif self.state == "COLOR":
+                self.game.next_player_color()
+
+            elif self.state == "VOLVER":
                 self._save_and_return()
-    
-        # Regresar con la tecla configurada para BACK.
+
+        # Escape regresa al menu principal.
         if self.game.BACK_KEY:
             self._save_and_return()
 
@@ -308,7 +427,7 @@ class ConfigMenu(Menu):
 class LevelsMenu(Menu):
     def __init__(self, game):
         super().__init__(game)
-        self.options = ["Nivel 1", "Nivel 2", "Volver"]
+        self.options = ["NIVEL 1", "NIVEL 2", "VOLVER"]
         self.index = 0
 
     def display_menu(self):
@@ -354,16 +473,16 @@ class LevelsMenu(Menu):
         if self.game.START_KEY:
             choice = self.options[self.index]
 
-            if choice == "Volver":
+            if choice == "VOLVER":
                 self.game.curr_menu = self.game.main_menu
                 self.run_display = False
 
-            elif choice == "Nivel 1":
+            elif choice == "NIVEL 1":
                 self.game.selected_level = 1
                 self.game.playing = True
                 self.run_display = False
 
-            elif choice == "Nivel 2":
+            elif choice == "NIVEL 2":
                 self.game.selected_level = 2
                 self.game.playing = True
                 self.run_display = False
