@@ -1,7 +1,9 @@
 import os
+import csv
 import pygame
 import asyncio
 import threading
+from datetime import datetime
 from bleak import BleakClient, BleakScanner
 
 from scripts.utils import load_images, Animation
@@ -113,6 +115,23 @@ CHAR_NOTIFY_UUID = "abcd1234-ab12-cd34-ef56-abcdef123457"
 INTENSIDAD_ARIADNE = 150            # Intensidad de la vibración
 DELAY_ARIADNE = 200                 # Duración / retardo de la vibración (ms)
 BLE_SCAN_TIMEOUT = 10               # Segundos buscando el dispositivo
+
+# ===== GUARDADO DE RESULTADOS =====
+SCORES_FOLDER_NAME = "scores"
+SCORES_FILE_NAME = "historial_partidas.csv"
+
+SCORES_HEADERS = [
+    "Fecha",
+    "Hora",
+    "Nickname",
+    "Nivel",
+    "Resultado",
+    "Globos rotos",
+    "Puntuación",
+    "ARIADNE",
+    "Modo",
+    "Color",
+]
 
 
 class Game:
@@ -601,6 +620,10 @@ class Game:
 
     def reset_level(self, level_id: int):
         self.apply_level_theme(level_id)
+        
+        # GUARDADO DE DATOS
+        self.result_saved = False
+        self.balloons_broken = 0
 
         self.time_limit = LEVEL_TIME_LIMITS.get(level_id, DEFAULT_LEVEL_TIME_LIMIT)
         self.time_left = self.time_limit
@@ -675,6 +698,45 @@ class Game:
 
     def _is_end_screen(self):
         return self.state == self.WIN or (self.state == self.GAME_OVER and self.go_phase == "STOP")
+    
+    def _get_scores_file_path(self):
+        game_directory = os.path.dirname(os.path.abspath(__file__))
+        scores_directory = os.path.join(game_directory,SCORES_FOLDER_NAME)
+        scores_file_path = os.path.join(scores_directory,SCORES_FILE_NAME)
+        return scores_directory, scores_file_path
+    
+    def _save_finished_game_result(self):
+        if self.result_saved: return
+        if self.state == self.WIN: result = "NIVEL COMPLETADO"
+        elif self.state == self.GAME_OVER and self.go_phase == "STOP": result = "GAME OVER"
+        else: return
+    
+        now = datetime.now()
+        nickname = self.gamer_tag.strip() or "SIN_NOMBRE"
+        level_name = "NIVEL 2" if self.selected_level == 2 else "NIVEL 1"
+        ariadne_status = "ON" if self.bluetooth_enabled else "OFF"
+    
+        row = [now.strftime("%Y-%m-%d"), now.strftime("%H:%M:%S"), nickname, level_name, result, self.balloons_broken, self.score, ariadne_status, self.hand_mode, self.player_color]
+    
+        try:
+            scores_directory, scores_file_path = self._get_scores_file_path()
+            os.makedirs(scores_directory, exist_ok=True)
+            write_headers = not os.path.exists(scores_file_path) or os.path.getsize(scores_file_path) == 0
+    
+            with open(scores_file_path, mode="a", newline="", encoding="utf-8-sig") as csv_file:
+                writer = csv.writer(csv_file)
+                if write_headers: writer.writerow(SCORES_HEADERS)
+                writer.writerow(row)
+                csv_file.flush()
+                os.fsync(csv_file.fileno())
+    
+            self.result_saved = True
+            print(f"[CSV] Resultado guardado correctamente en: {scores_file_path}")
+        except (OSError, csv.Error) as error:
+            print(f"[CSV] No se pudo guardar el resultado de la partida: {error}")
+        except Exception as error:
+            print(f"[CSV] Error inesperado al guardar el resultado: {error}")
+
 
     def _game_loop(self):
         while self.playing and self.running:
@@ -709,6 +771,7 @@ class Game:
             self._update_falling_bridges(frame_dt)
             self._render_balloons(render_scroll)
             self._check_win()
+            self._save_finished_game_result()
 
             # ===== HUD Y PANTALLA FINAL =====
             show_end = self._is_end_screen()
@@ -759,6 +822,7 @@ class Game:
             gained = int(max(0.0, (self.time_limit - elapsed)) * MAX_SCORE_PER_CHALLENGE / self.time_limit)
             gained = max(0, min(gained, MAX_SCORE_PER_CHALLENGE))
             self.score += gained
+            self.balloons_broken += 1
             cur["scored"] = True
         cur["balloon_is_popping"] = True
         cur["bridge_state"] = "FALLING"
