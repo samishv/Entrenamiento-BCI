@@ -47,10 +47,16 @@ from Procesamiento_Funciones import (
 
 plt.close("all")
 
+# CARPETA_DATOS = Path(
+#     r"C:\Users\VAIO\Desktop\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+#     r"\SV3\MI"
+# )
+
 CARPETA_DATOS = Path(
-    r"C:\Users\VAIO\Desktop\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+    r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
     r"\SV3\MI"
 )
+
 PATRON_ARCHIVOS = "*.npy"          # se usan todos los que existan en la carpeta
 CARPETA_RESULTADOS = CARPETA_DATOS / "Resultados_ERD_ERS"
 
