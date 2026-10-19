@@ -47,16 +47,11 @@ from Procesamiento_Funciones import (
 
 plt.close("all")
 
-# CARPETA_DATOS = Path(
-#     r"C:\Users\VAIO\Desktop\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-#     r"\SV3\MI"
-# )
+# CARPETA_DATOS = Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SV3" / "MI"
 
 CARPETA_DATOS = Path(
-    
-    #r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-    r"C:\Users\lipsp\Documents\GitHub\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-    r"\SK1\ME_D0"
+    r"C:\Users\VAIO\Desktop\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+    r"\SV3\MI"
 )
 
 PATRON_ARCHIVOS = "*.npy"          # se usan todos los que existan en la carpeta
