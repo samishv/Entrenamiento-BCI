@@ -1,0 +1,19 @@
+{
+  "pid": "X",
+  "sesion": "D1",
+  "bloque": "B1",
+  "seed": 1792204581,
+  "fps": 59.91622513085903,
+  "n_trials": 2,
+  "mvc_sobre_tara": 36.31666666666666,
+  "tara_raw": 32.5,
+  "ruido_tara_std": 0.0,
+  "mvc_raw_absoluto": 68.81666666666666,
+  "obj_pct": 15.0,
+  "tol_pct": 5.0,
+  "puerto": "SIMULADO",
+  "baud": 115200,
+  "eeg_stream": "streamTEST",
+  "block_start_lsl": 235887.1441098,
+  "block_start_wallclock": "2026-10-16T20:37:54.530"
+}

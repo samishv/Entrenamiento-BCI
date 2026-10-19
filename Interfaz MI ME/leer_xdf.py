@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Lee uno o varios .xdf (LabRecorder) del protocolo MI/ME y recorta los trials
-usando los marcadores LSL de 'MIME_Markers'.
-
 Secuencia de marcadores de cada trial:
     jitter_start  aparece la cruz (inicio del trial; duración variable)
     fix_start     inicio de los 3 s de fijación
@@ -18,18 +15,10 @@ Tipos de recorte (TIPO_RECORTE):
                        trial completo (incluye los 2 s finales de reposo); largo variable
   'ventana_cue'      : [cue+TMIN, cue+TMAX)           largo FIJO
 
-Un marcador que
-caiga antes del inicio del recorte (p. ej. jitter_start en 'fix_a_reposo3') se
+Un marcador que caiga antes del inicio del recorte (p. ej. jitter_start en 'fix_a_reposo3') se
 guarda como NaN.
-
-
-Todo se configura en la sección CONFIGURACIÓN INICIAL.
-Cambia MODO entre 'procesar' (recortar .xdf) y 'visualizar'
-(graficar .npy ya guardados) y ejecuta: python cortar_xdf.py
-
-Nota: con los recortes de largo variable el .npz contiene un arreglo de objetos,
-por lo que hay que cargarlo con np.load(ruta, allow_pickle=True).
 """
+
 import csv
 import glob
 import os
@@ -40,21 +29,17 @@ from types import SimpleNamespace
 import numpy as np
 import pyxdf
 
-# ==============================================================================
+
 # CONFIGURACIÓN INICIAL 
-# ==============================================================================
 MODO = 'procesar'        # 'procesar' = recortar .xdf | 'visualizar' = graficar .npy
 
 # --- Entrada (modo 'procesar') -----------------------------------------------
-RUTA_ARCHIVO_XDF = r"Protocolo ERD_ERS\Signals\SK1\*.xdf"
-RUTAS_XDF = [RUTA_ARCHIVO_XDF]   # lista de archivos .xdf o patrones glob (ej. r"...\SVX\*.xdf").
-                                 # Se procesan todos, en orden natural (B1, B2, ..., B10).
-
+RUTA_ARCHIVO_XDF = r"Protocolo ERD_ERS\Signals\SV3\*.xdf"
+RUTAS_XDF = [RUTA_ARCHIVO_XDF]   # lista de archivos .xdf o patrones glob (ej. r"...\SVX\*.xdf")
 # --- Salida de los trials .npy -----------------------------------------------
 # Se guardan en <RUTA_SIGNALS>\<CARPETA_SUJETO>\{ME, MI, CSV, NPZ}
 RUTA_SIGNALS = r"Protocolo ERD_ERS\Signals"
-CARPETA_SUJETO = 'SK1'           # SV1, SV2, SK1, ... = todos los .xdf van a ese sujeto
-                                 # None = cada .xdf va a la carpeta (sujeto) donde está guardado
+CARPETA_SUJETO = 'SV3'           # SV1, SV2, SK1, ... = todos los .xdf van a ese sujeto
 GUARDAR_NPY = True               # guardar un .npy por trial
 
 # --- Salida de los .npz ------------------------------------------------------
@@ -99,8 +84,7 @@ INICIO_FIN = {
 }
 NOMBRE_CLAVE = {'t_fix': 'fix_start', 't_jitter': 'jitter_start', 't_reposo3': 'reposo_3s',
                 't_next_jitter': 'siguiente jitter_start/block_end'}
-# Marcadores que se guardan (relativos al inicio del recorte) y se dibujan:
-# (nombre, clave en res, color)
+
 EVENTOS = [
     ('jitter_start', 't_jitter', 'tab:gray'),
     ('fix_start', 't_fix', 'tab:blue'),
@@ -390,7 +374,8 @@ def guardar_trials_npy(res, nombre_base, carpeta_sujeto):
 
     previos = 0
     for clase in CLASES:
-        for f in glob.glob(os.path.join(carpeta_sujeto, clase, f"{glob.escape(nombre_base)}_trial*.npy")):
+        os.makedirs(os.path.join(carpeta_sujeto, clase, nombre_base), exist_ok=True)
+        for f in glob.glob(os.path.join(carpeta_sujeto, clase, nombre_base, f"{glob.escape(nombre_base)}_trial*.npy")):
             os.remove(f)
             previos += 1
 
@@ -403,7 +388,7 @@ def guardar_trials_npy(res, nombre_base, carpeta_sujeto):
         for i in range(len(res['X'])):
             clase = str(res['clase'][i])
             nombre_npy = f"{nombre_base}_trial{(i+1):03d}_{clase}.npy"
-            carpeta_clase = os.path.join(carpeta_sujeto, clase)
+            carpeta_clase = os.path.join(carpeta_sujeto, clase, nombre_base)
             os.makedirs(carpeta_clase, exist_ok=True)
             np.save(os.path.join(carpeta_clase, nombre_npy), res['X'][i])
             w.writerow([nombre_npy, i, clase, int(res['y'][i]), f"{res['epoca_t0_lsl'][i]:.6f}"]
