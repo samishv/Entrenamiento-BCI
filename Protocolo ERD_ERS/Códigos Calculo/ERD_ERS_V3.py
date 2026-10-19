@@ -51,7 +51,7 @@ plt.close("all")
 
 CARPETA_DATOS = Path(
     r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-    r"\SV3\MI"
+    r"\SV1\ME"
 )
 
 PATRON_ARCHIVOS = "*.npy"          # se usan todos los que existan en la carpeta
@@ -100,7 +100,7 @@ BASELINE = (
 BANDAS = {
     "Mu":    (8.0, 12.0),
     "Beta":  (12.0, 30.0),
-    "Gamma": (30.0, 45.0),
+    # "Gamma": (30.0, 45.0),
 }
 
 
