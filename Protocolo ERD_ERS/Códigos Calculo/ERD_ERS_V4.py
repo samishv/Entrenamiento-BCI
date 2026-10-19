@@ -1,27 +1,5 @@
-# -*- coding: utf-8 -*-
-
-"""
-ANALISIS ERSP (MORLET) Y ERD/ERS PORCENTUAL  -  V3
-==================================================
-
-Toma TODOS los archivos .npy de una carpeta (N ensayos, cualquier cantidad),
-cada uno con forma (canales, muestras), y genera 4 figuras:
-
-    1. ERSP Morlet promedio de los N ensayos (todos los canales).
-    2. ERD/ERS porcentual de Mu     (un subplot por canal).
-    3. ERD/ERS porcentual de Beta   (un subplot por canal).
-    4. ERD/ERS porcentual de Gamma  (un subplot por canal).
-
-Todas con disposicion 3x3 segun POSICIONES_CANALES.
-No se genera ningun CSV ni .npy.
-
-Los tiempos del protocolo (reposo / tarea / reposo) se editan abajo y se
-aplican a todos los ensayos por igual.
-
-MODIFICACION LEER TODOS LOS NPY EN 1 CARPETA GLOBAL
-"""
-
 from pathlib import Path
+import re
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -47,22 +25,21 @@ from Procesamiento_Funciones import (
 
 plt.close("all")
 
-CARPETA_DATOS = Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SV3" / "MI"
+# CARPETA_DATOS = Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SV3" / "MI"
 
-# CARPETA_DATOS = Path(
-#     r"C:\Users\VAIO\Desktop\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-#     r"\SV3\MI"
-# )
+CARPETA_DATOS = Path(
+    r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+    r"\SK1\MI"
+)
 
-PATRON_ARCHIVOS = "*.npy"          # se usan todos los que existan en la carpeta
-CARPETA_RESULTADOS = CARPETA_DATOS / "Resultados_ERD_ERS"
+PATRON_ARCHIVOS = "*.npy"
+CARPETA_RESULTADOS = CARPETA_DATOS.parent / "Resultados_ERD_ERS"
+MODALIDAD = CARPETA_DATOS.name
 
 FS = 250.0
 
-# Orden de los canales tal como vienen en las filas de cada .npy
 CANALES = ["Fz", "FC3", "FCz", "FC4", "Cz", "C3", "C4"]
 
-# Posicion de cada canal en la malla 3x3: (fila, columna), empezando en 1
 POSICIONES_CANALES = {
     "Fz":  (1, 2),
     "FC3": (2, 1), "FCz": (2, 2), "FC4": (2, 3),
@@ -73,20 +50,14 @@ POSICIONES_CANALES = {
 # =============================================================================
 # CONFIGURACION: TIEMPOS DEL PROTOCOLO (segundos, iguales para todos los ensayos)
 # =============================================================================
-# Deben ser consecutivos: el fin de un segmento = inicio del siguiente.
-# Ejemplo alterno:  (0, 2) / (2, 5) / (5, 7)
 
 T_REPOSO_INICIAL = (0.0, 3.0)
 T_TAREA          = (3.0, 8.0)
 T_REPOSO_FINAL   = (8.0, 11.0)
-
-# El analisis termina en T_REPOSO_FINAL[1]. Si un archivo es mas largo se recorta
-# ahi; si es mas corto se omite (con aviso).
 T_FIN = T_REPOSO_FINAL[1]
 
-# Baseline = reposo inicial menos un margen en cada extremo (evita bordes de
-# filtros/wavelets). Puedes sobrescribirlo, p. ej.: BASELINE = (0.5, 2.5)
-MARGEN_BASELINE = 0.5
+
+MARGEN_BASELINE = 0.5                                       # Baseline = reposo inicial menos un margen en cada extremo 
 BASELINE = (
     T_REPOSO_INICIAL[0] + MARGEN_BASELINE,
     T_REPOSO_INICIAL[1] - MARGEN_BASELINE,
@@ -98,9 +69,8 @@ BASELINE = (
 # =============================================================================
 
 BANDAS = {
-    "Mu":    (8.0, 12.0),
-    "Beta":  (12.0, 30.0),
-    "Gamma": (30.0, 45.0),
+    "Ritmo Mu":    (8.0, 12.0),
+    "Ritmo Beta":  (12.0, 30.0),
 }
 
 
@@ -117,33 +87,24 @@ F_LOW = 5.0
 F_HIGH = 45.0
 BP_ORDER = 3
 
-PAD_MUESTRAS = int(5 * FS)         # padding reflejado (se limita al largo de la senal)
+PAD_MUESTRAS = int(5 * FS)                                  # padding reflejado (5 segundos)
 
-# ICA (usa ica_eliminar_componente de Procesamiento_Funciones; ajuste conjunto
-# sobre los N ensayos concatenados). IC_TO_REMOVE: indice de la IC o None.
-USAR_ICA = False
-IC_TO_REMOVE = None
-ICA_RANDOM_STATE = 97
+USAR_ICA = False                                            # USAR ICA
+IC_TO_REMOVE = None                                         # Componente principal a eliminar       
+ICA_RANDOM_STATE = 97                       
 
 
 # =============================================================================
 # CONFIGURACION: ERSP CON MORLET  (zona para ir probando valores)
 # =============================================================================
 
-# FREQS_MORLET = np.arange(4.0, 46.0, 1.0)
-FREQS_MORLET = np.arange(7.0, 32.0, 1.0)
+FREQS_MORLET = np.arange(7.0, 32.0, 1.0)                    # rango del escalograma
+N_CYCLES_MORLET = np.linspace(6, 15, len(FREQS_MORLET))     # de 6 a 15 ciclos de barrido
 
-# Ciclos por frecuencia. Opciones:
-#   np.linspace(3.0, 10.0, len(FREQS_MORLET))   ciclos crecientes (actual)
-#   5                                           ciclos fijos
-#   FREQS_MORLET / 2                            wavelet de duracion constante
-# N_CYCLES_MORLET = np.linspace(5, 8, len(FREQS_MORLET))
-N_CYCLES_MORLET = np.linspace(6, 15, len(FREQS_MORLET))
-
-MORLET_DECIM = 4                   # 250 Hz / 5 = 50 puntos por segundo
+MORLET_DECIM = 4                                            # 250 Hz / 5 = 50 puntos por segundo
 N_JOBS = 1
 
-LIMITE_ERSP_DB = None              # p. ej. 3.0 para fijar +-3 dB; None = automatico
+LIMITE_ERSP_DB = None                                       # p. ej. 3.0 para fijar +-3 dB; None = automatico
 CMAP_ERSP = "jet"
 
 
@@ -151,14 +112,14 @@ CMAP_ERSP = "jet"
 # CONFIGURACION: FFT DESLIZANTE PARA ERD/ERS PORCENTUAL
 # =============================================================================
 
-FFT_DURACION_VENTANA = 0.8        # s  (resolucion en frecuencia = 1 / ventana) 100 muestras / 250 Hz = 0.4 segundos
-FFT_PASO_SEGUNDOS = 0.2            # s
+FFT_DURACION_VENTANA = 0.8                                  # s  (resolucion en frecuencia = 1 / ventana) 100 muestras / 250 Hz = 0.4 segundos
+FFT_PASO_SEGUNDOS = 0.2                                     # s
 FFT_NPERSEG = int(FFT_DURACION_VENTANA * FS)
 FFT_PASO_MUESTRAS = int(FFT_PASO_SEGUNDOS * FS)
-FFT_NFFT = FFT_NPERSEG             # >FFT_NPERSEG interpola el espectro (zero-padding)
+FFT_NFFT = FFT_NPERSEG                                      # FFT_NPERSEG interpola el espectro (zero-padding)
 
-SUAVIZADO_SEGUNDOS = 0             # solo visual; 0 o None desactiva "MULTIPLO DE PASO"
-LIMITES_ERD_ERS = None             # p. ej. (-100, 200) en %; None = automatico
+SUAVIZADO_SEGUNDOS = 0                                      # solo visual; 0 o None desactiva "MULTIPLO DE PASO"
+LIMITES_ERD_ERS = None                                      # p. ej. (-100, 200) en %; None = automatico
 
 
 # =============================================================================
@@ -211,68 +172,114 @@ def validar_configuracion():
 # =============================================================================
 
 def preprocesar_ensayo(datos):
-    """DC -> notch -> pasa banda (un ensayo, forma canales x muestras)."""
-
     if ELIMINAR_DC:
         datos = quitar_componente_dc(datos)
-
     pad = min(PAD_MUESTRAS, datos.shape[1] - 1)
-
     datos = aplicar_notch_multiple(datos, FS, FREQS_NOTCH, Q_NOTCH, pad)
     datos = aplicar_pasabanda_butter(datos, FS, F_LOW, F_HIGH, BP_ORDER, pad)
-
     return datos
 
 
-def cargar_ensayos():
-    """Carga y preprocesa todos los .npy de la carpeta y sus subcarpetas
-    -> (ensayos, canales, muestras)."""
+def obtener_dia_desde_ruta(archivo):
+    ruta_relativa = archivo.relative_to(CARPETA_DATOS)
 
-    # rglob busca de forma recursiva (D1_B1, D1_B2, ..., D2_B3).
-    # Se excluye la carpeta de resultados por si algun dia guardas .npy ahi.
-    archivos = sorted(
-        a for a in CARPETA_DATOS.rglob(PATRON_ARCHIVOS)
-        if CARPETA_RESULTADOS not in a.parents
-    )
+    for parte in ruta_relativa.parts[:-1]:
+        coincidencia = re.fullmatch(
+            r"D(\d+)_B(\d+)",
+            parte,
+            flags=re.IGNORECASE,
+        )
+
+        if coincidencia:
+            numero_dia = int(coincidencia.group(1))
+            return f"D{numero_dia}"
+
+    return None
+
+
+def clave_orden_dia(nombre_dia):
+    coincidencia = re.fullmatch(r"D(\d+)", nombre_dia, flags=re.IGNORECASE)
+
+    if coincidencia:
+        return int(coincidencia.group(1))
+
+    return float("inf")
+
+
+def cargar_ensayos_por_dia():
+    archivos = sorted(CARPETA_DATOS.rglob(PATRON_ARCHIVOS))
 
     if not archivos:
-        raise FileNotFoundError(f"No se encontraron archivos {PATRON_ARCHIVOS} en:\n{CARPETA_DATOS}")
+        raise FileNotFoundError(
+            f"No se encontraron archivos {PATRON_ARCHIVOS} en:\n"
+            f"{CARPETA_DATOS}"
+        )
 
     n_fin = int(round(T_FIN * FS))
-    ensayos = []
+    ensayos_por_dia = {}
 
-    print(f"Archivos encontrados: {len(archivos)}")
+    print(f"Archivos '.npy' encontrados: {len(archivos)}")
 
     for archivo in archivos:
-        # Ruta relativa (p. ej. D1_B2\ensayo_03.npy): asi se distingue de que bloque viene
-        nombre = archivo.relative_to(CARPETA_DATOS)
+        nombre_relativo = archivo.relative_to(CARPETA_DATOS)
+        dia = obtener_dia_desde_ruta(archivo)
+
+        if dia is None:
+            print(
+                f"  [OMITIDO] {nombre_relativo}: "
+                "no está dentro de una carpeta con formato DX_BX"
+            )
+            continue
 
         try:
-            datos = cargar_npy_eeg(str(archivo), n_canales_esperados=len(CANALES))
+            datos = cargar_npy_eeg(
+                str(archivo),
+                n_canales_esperados=len(CANALES),
+            )
 
             if not np.isfinite(datos).all():
                 raise ValueError("contiene NaN o infinitos")
+
             if datos.shape[1] < n_fin:
                 raise ValueError(
-                    f"dura {datos.shape[1] / FS:.2f} s y el protocolo requiere {T_FIN:g} s"
+                    f"dura {datos.shape[1] / FS:.2f} s "
+                    f"y el protocolo requiere {T_FIN:g} s"
                 )
+
         except ValueError as error:
-            print(f"  [OMITIDO] {nombre}: {error}")
+            print(f"  [OMITIDO] {nombre_relativo}: {error}")
             continue
 
-        # Se filtra la senal completa y despues se recorta (menos efecto de borde)
-        ensayos.append(preprocesar_ensayo(datos)[:, :n_fin])
-        print(f"  [OK] {nombre}")
+        datos_preprocesados = preprocesar_ensayo(datos)[:, :n_fin]
 
-    if not ensayos:
-        raise RuntimeError("Ningun archivo fue valido para el analisis.")
+        if dia not in ensayos_por_dia:
+            ensayos_por_dia[dia] = []
 
-    return np.stack(ensayos, axis=0)
+        ensayos_por_dia[dia].append(datos_preprocesados)
+
+        print(f"  [OK] {nombre_relativo} -> {dia}")
+
+    if not ensayos_por_dia:
+        raise RuntimeError(
+            "No se encontró ningún archivo válido dentro de carpetas DX_BX."
+        )
+
+    ensayos_por_dia = {
+        dia: np.stack(lista_ensayos, axis=0)
+        for dia, lista_ensayos in ensayos_por_dia.items()
+    }
+
+    ensayos_por_dia = dict(
+        sorted(
+            ensayos_por_dia.items(),
+            key=lambda elemento: clave_orden_dia(elemento[0]),
+        )
+    )
+
+    return ensayos_por_dia
 
 
 def aplicar_ica(ensayos):
-    """ICA conjunta sobre los ensayos concatenados (MNE trabaja en voltios)."""
-
     if not USAR_ICA:
         return ensayos
 
@@ -301,13 +308,6 @@ def intervalo_a_mascara(tiempo, intervalo):
 
 
 def promedio_con_baseline(ensayos, potencia_ensayo):
-    """
-    Promedia la potencia de los N ensayos y su baseline, ensayo por ensayo
-    (la memoria no crece con N).
-
-    Devuelve: potencia media (canales, frec, t), baseline (canales, frec), t.
-    """
-
     suma = base = mascara = None
 
     for ensayo in ensayos:
@@ -369,8 +369,6 @@ def frecuencias_fft():
 
 
 def calcular_ersp(ensayos):
-    """ERSP en dB: potencia media de los N ensayos / baseline medio."""
-
     potencia, base, tiempo = promedio_con_baseline(ensayos, potencia_morlet)
     ersp_db = 10.0 * np.log10((potencia + EPS) / (base[..., np.newaxis] + EPS))
 
@@ -378,8 +376,6 @@ def calcular_ersp(ensayos):
 
 
 def calcular_erd_ers(ensayos):
-    """ERD/ERS % por banda: 100 * (SPEC(f,t) / baseline(f) - 1), promedio en la banda."""
-
     potencia, base, tiempo = promedio_con_baseline(ensayos, potencia_stft)
     frecuencias = frecuencias_fft()
 
@@ -388,7 +384,6 @@ def calcular_erd_ers(ensayos):
     erd_ers = {}
 
     for banda, (f_ini, f_fin) in BANDAS.items():
-        # El limite superior es inclusivo solo en el extremo del rango de analisis
         tope = frecuencias <= f_fin if f_fin >= frecuencias.max() else frecuencias < f_fin
         mascara = (frecuencias >= f_ini) & tope
 
@@ -405,8 +400,6 @@ def calcular_erd_ers(ensayos):
 # =============================================================================
 
 def crear_malla(titulo):
-    """Malla 3x3 con los canales en POSICIONES_CANALES. Devuelve fig, {canal: ax}, ejes libres."""
-
     fig, axes = plt.subplots(3, 3, figsize=FIG_SIZE, constrained_layout=True)
     fig.suptitle(titulo, fontsize=18, fontweight="bold")
 
@@ -431,100 +424,189 @@ def marcar_protocolo(ax, sombrear):
     ax.set_xlim(T_REPOSO_INICIAL[0], T_FIN)
 
 
-def finalizar_figura(fig, nombre):
+def finalizar_figura(fig, nombre, subcarpeta):
     if MAXIMIZAR_FIGURAS and MOSTRAR_FIGURAS:
         pantalla_completa(fig)
 
     if GUARDAR_FIGURAS:
-        CARPETA_RESULTADOS.mkdir(parents=True, exist_ok=True)
-        ruta = CARPETA_RESULTADOS / f"{nombre}.{FIG_FORMATO}"
-        fig.savefig(ruta, dpi=FIG_DPI, bbox_inches="tight", facecolor=fig.get_facecolor())
-        print(f"[GUARDADO] {ruta}")
+        carpeta_destino = CARPETA_RESULTADOS / subcarpeta
+        carpeta_destino.mkdir(parents=True, exist_ok=True)
+
+        ruta = carpeta_destino / f"{nombre}.{FIG_FORMATO}"
+
+        fig.savefig(
+            ruta,
+            dpi=FIG_DPI,
+            bbox_inches="tight",
+            facecolor=fig.get_facecolor(),
+        )
+
+        print(f"[GUARDADO] {nombre}.{FIG_FORMATO} ✅")
 
 
-def graficar_ersp(ersp_db, tiempo, n_ensayos):
-    fig, ejes, _ = crear_malla(f"ERSP Morlet - Promedio de {n_ensayos} Ensayos")
+def graficar_ersp(ersp_db, tiempo, n_ensayos, grupo):
+    fig, ejes, _ = crear_malla(
+        f"ERSP | {MODALIDAD} | {grupo} | "
+        f"{n_ensayos} Ensayos"
+    )
 
-    limite = LIMITE_ERSP_DB or max(1.0, float(np.percentile(np.abs(ersp_db), 98.0)))
-    bordes_bandas = sorted({f for rango in BANDAS.values() for f in rango})
+    limite = LIMITE_ERSP_DB or max(
+        1.0,
+        float(np.percentile(np.abs(ersp_db), 98.0)),
+    )
+
+    bordes_bandas = sorted({
+        frecuencia
+        for rango in BANDAS.values()
+        for frecuencia in rango
+    })
 
     for i, canal in enumerate(CANALES):
         ax = ejes[canal]
 
         imagen = ax.pcolormesh(
-            tiempo, FREQS_MORLET, ersp_db[i],
-            shading="auto", cmap=CMAP_ERSP, vmin=-limite, vmax=limite,
+            tiempo,
+            FREQS_MORLET,
+            ersp_db[i],
+            shading="auto",
+            cmap=CMAP_ERSP,
+            vmin=-limite,
+            vmax=limite,
         )
 
         marcar_protocolo(ax, sombrear=False)
 
-        for f in bordes_bandas:
-            ax.axhline(f, color="black", linestyle=":", linewidth=1.2)
+        for frecuencia in bordes_bandas:
+            ax.axhline(
+                frecuencia,
+                color="black",
+                linestyle=":",
+                linewidth=1.2,
+            )
 
         ax.set_yscale("log")
         ax.set_ylim(FREQS_MORLET[0], FREQS_MORLET[-1])
-        
+
         ticks_frecuencia = [8, 10, 12, 14, 17, 20, 25, 30]
-        
+        ticks_frecuencia = [
+            frecuencia
+            for frecuencia in ticks_frecuencia
+            if FREQS_MORLET[0] <= frecuencia <= FREQS_MORLET[-1]
+        ]
+
         ax.set_yticks(ticks_frecuencia)
         ax.set_yticklabels([str(f) for f in ticks_frecuencia])
-        
+
         ax.set_title(canal, fontsize=14, fontweight="bold")
         ax.set_xlabel("Tiempo (s)")
         ax.set_ylabel("Frecuencia (Hz)")
 
-    barra = fig.colorbar(imagen, ax=list(ejes.values()), shrink=0.85, pad=0.02)
-    barra.set_label("ERSP (dB)", fontsize=13, fontweight="bold")
+    barra = fig.colorbar(
+        imagen,
+        ax=list(ejes.values()),
+        shrink=0.85,
+        pad=0.02,
+    )
 
-    finalizar_figura(fig, "ERSP_Morlet_promedio")
-    # pantalla_completa(fig)
+    barra.set_label(
+        "ERSP (dB)",
+        fontsize=13,
+        fontweight="bold",
+    )
+
+    nombre_archivo = f"ERSP_Morlet_{MODALIDAD}_{grupo}"
+
+    finalizar_figura(
+        fig,
+        nombre=nombre_archivo,
+        subcarpeta="Escalogramas",
+    )
 
 
-def graficar_erd_ers(erd_ers, tiempo, banda, n_ensayos):
+def graficar_erd_ers(erd_ers, tiempo, banda, n_ensayos, grupo):
     f_ini, f_fin = BANDAS[banda]
 
     fig, ejes, libres = crear_malla(
-        f"ERD/ERS porcentual - {banda} ({f_ini:g}-{f_fin:g} Hz) - Promedio de {n_ensayos} Ensayos"
+        f"% ERD/ERS | {MODALIDAD} | {grupo} | "
+        f"{banda} ({f_ini:g}-{f_fin:g} Hz) | "
+        f"{n_ensayos} Ensayos"
     )
 
-    ventana = int(round(SUAVIZADO_SEGUNDOS / FFT_PASO_SEGUNDOS)) if SUAVIZADO_SEGUNDOS else 1
+    ventana = (
+        int(round(SUAVIZADO_SEGUNDOS / FFT_PASO_SEGUNDOS))
+        if SUAVIZADO_SEGUNDOS
+        else 1
+    )
+
     curvas = erd_ers[banda]
 
     if ventana > 1:
-        curvas = uniform_filter1d(curvas, size=ventana, axis=-1, mode="nearest")
+        curvas = uniform_filter1d(
+            curvas,
+            size=ventana,
+            axis=-1,
+            mode="nearest",
+        )
 
     if LIMITES_ERD_ERS is not None:
         y_min, y_max = LIMITES_ERD_ERS
     else:
-        y_min, y_max = min(curvas.min(), 0.0), max(curvas.max(), 0.0)
+        y_min = min(curvas.min(), 0.0)
+        y_max = max(curvas.max(), 0.0)
+
         margen = 0.05 * (y_max - y_min or 1.0)
-        y_min, y_max = y_min - margen, y_max + margen
+        y_min -= margen
+        y_max += margen
 
     for i, canal in enumerate(CANALES):
         ax = ejes[canal]
 
         marcar_protocolo(ax, sombrear=True)
         ax.axhline(0.0, linewidth=1.0, alpha=0.8)
-        ax.plot(tiempo, curvas[i], color=COLORES_CANALES.get(canal, "C0"), linewidth=1.6)
+
+        ax.plot(
+            tiempo,
+            curvas[i],
+            color=COLORES_CANALES.get(canal, "C0"),
+            linewidth=1.6,
+        )
 
         ax.set_ylim(y_min, y_max)
         ax.set_title(canal, fontsize=14, fontweight="bold")
         ax.set_xlabel("Tiempo (s)")
         ax.set_ylabel("Cambio vs baseline (%)")
-        ax.grid(True, linestyle="--", linewidth=0.4, alpha=0.4)
+        ax.grid(
+            True,
+            linestyle="--",
+            linewidth=0.4,
+            alpha=0.4,
+        )
 
     if libres:
         libres[0].legend(
             handles=[
-                Patch(color=COLOR_REPOSO, alpha=0.4, label="Reposo"),
-                Patch(color=COLOR_TAREA, alpha=0.4, label="Tarea"),
+                Patch(
+                    color=COLOR_REPOSO,
+                    alpha=0.4,
+                    label="Reposo",
+                ),
+                Patch(
+                    color=COLOR_TAREA,
+                    alpha=0.4,
+                    label="Tarea",
+                ),
             ],
             loc="center",
             fontsize=13,
         )
 
-    finalizar_figura(fig, f"ERD_ERS_porcentual_{banda}")
-    # pantalla_completa(fig)
+    nombre_archivo = f"ERD_ERS_{MODALIDAD}_{banda}_{grupo}"
+
+    finalizar_figura(
+        fig,
+        nombre=nombre_archivo,
+        subcarpeta=banda,
+    )
 
 
 # =============================================================================
@@ -534,35 +616,110 @@ def graficar_erd_ers(erd_ers, tiempo, banda, n_ensayos):
 def main():
     validar_configuracion()
 
-    print("=" * 70)
-    print(f"Carpeta: {CARPETA_DATOS}")
-    print(f"Reposo inicial {T_REPOSO_INICIAL} | Tarea {T_TAREA} | Reposo final {T_REPOSO_FINAL} s")
-    print(f"Baseline: {BASELINE} s")
-    print("=" * 70)
-
-    ensayos = aplicar_ica(cargar_ensayos())
-    n_ensayos = ensayos.shape[0]
-
-    print(f"\nEnsayos usados: {n_ensayos} | Forma: {ensayos.shape} (ensayos, canales, muestras)")
-
-    ciclos = np.broadcast_to(N_CYCLES_MORLET, FREQS_MORLET.shape)
-    sigma_t = ciclos / (2 * np.pi * FREQS_MORLET)
+    print(f"\nCarpeta de datos: {CARPETA_DATOS}")
+    print(f"Carpeta de resultados: {CARPETA_RESULTADOS}")
     print(
-        f"Morlet: sigma temporal {sigma_t[0]:.3f} s en {FREQS_MORLET[0]:g} Hz "
-        f"y {sigma_t[-1]:.3f} s en {FREQS_MORLET[-1]:g} Hz"
+        f"Reposo inicial {T_REPOSO_INICIAL} | "
+        f"Tarea {T_TAREA} | "
+        f"Reposo final {T_REPOSO_FINAL} s"
     )
-    print(f"FFT: resolucion {FS / FFT_NFFT:.2f} Hz\n")
+    print(f"Baseline: {BASELINE} s\n")
 
-    ersp_db, tiempo_tfr = calcular_ersp(ensayos)
-    graficar_ersp(ersp_db, tiempo_tfr, n_ensayos)
+    ciclos = np.broadcast_to(
+        N_CYCLES_MORLET,
+        FREQS_MORLET.shape,
+    )
 
-    erd_ers, tiempo_fft = calcular_erd_ers(ensayos)
-    for banda in BANDAS:
-        graficar_erd_ers(erd_ers, tiempo_fft, banda, n_ensayos)
+    sigma_t = ciclos / (2 * np.pi * FREQS_MORLET)
+
+    print(
+        f"Morlet: sigma temporal {sigma_t[0]:.3f} s "
+        f"en {FREQS_MORLET[0]:g} Hz y "
+        f"{sigma_t[-1]:.3f} s "
+        f"en {FREQS_MORLET[-1]:g} Hz"
+    )
+
+    print(f"FFT: resolución {FS / FFT_NFFT:.2f} Hz\n")
+
+    ensayos_por_dia = cargar_ensayos_por_dia()
+
+    print("\nDías encontrados automáticamente:")
+
+    for dia, ensayos_dia in ensayos_por_dia.items():
+        print(f"  {dia}  : {ensayos_dia.shape[0]} ensayos")
+    
+    total_general = sum(
+        ensayos_dia.shape[0]
+        for ensayos_dia in ensayos_por_dia.values()
+    )
+    
+    print(f"  GEN : {total_general} ensayos")
+
+    # =============================================================
+    # ANÁLISIS INDIVIDUAL DE CADA DÍA
+    # =============================================================
+    
+    for dia, ensayos_dia in ensayos_por_dia.items():
+        analizar_grupo(
+            ensayos=ensayos_dia,
+            grupo=dia,
+        )
+
+    # =============================================================
+    # ANÁLISIS GENERAL DE TODOS LOS DÍAS
+    # =============================================================
+    
+    ensayos_generales = np.concatenate(
+        list(ensayos_por_dia.values()),
+        axis=0,
+    )
+
+    analizar_grupo(
+        ensayos=ensayos_generales,
+        grupo="GENERAL",
+    )
 
     if MOSTRAR_FIGURAS:
         plt.show()
     else:
+        plt.close("all")
+
+    print("\n" + "=" * 30)
+    print("ANÁLISIS TERMINADO")
+    print("=" * 30)
+    print(f"Resultados guardados en:\n{CARPETA_RESULTADOS}")
+        
+def analizar_grupo(ensayos, grupo):
+    print("\n" + "=" * 30)
+    print(f"ANÁLISIS: {MODALIDAD} - {grupo}")
+    print("=" * 30)
+
+    ensayos = aplicar_ica(ensayos)
+    n_ensayos = ensayos.shape[0]
+
+    print(f"Ensayos: {n_ensayos}")
+
+    ersp_db, tiempo_tfr = calcular_ersp(ensayos)
+
+    graficar_ersp(
+        ersp_db,
+        tiempo_tfr,
+        n_ensayos,
+        grupo,
+    )
+
+    erd_ers, tiempo_fft = calcular_erd_ers(ensayos)
+
+    for banda in BANDAS:
+        graficar_erd_ers(
+            erd_ers,
+            tiempo_fft,
+            banda,
+            n_ensayos,
+            grupo,
+        )
+
+    if not MOSTRAR_FIGURAS:
         plt.close("all")
 
 
