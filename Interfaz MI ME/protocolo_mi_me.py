@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-
 Trial (14-15 s):
     ATENCIÓN (cruz '+'):  jitter 1-2 s  ->  fijación 3 s
     -> beep + cue (color/imagen) 5 s
@@ -21,13 +20,6 @@ Marcadores (todos alineados al flip en que aparece el estímulo o arranca la fas
     reposo_3s    : 3 s después de reposo_start (quedan 2 s de reposo)
 Ventana de análisis prevista: fix_start -> reposo_3s (nominal 3 + 5 + 3 = 11 s).
 
-Al terminar (o abortar) la ventana queda abierta hasta pulsar ESPACIO,
-para dar tiempo a pulsar Stop en LabRecorder ANTES de cerrar el stream de marcadores.
-
-Uso:
-    python protocolo_mi_me.py                    # abre el menú de inicio
-    python protocolo_mi_me.py --pid 1 --pantalla 1 --mapeo A   # menú con esos valores
-    python protocolo_mi_me.py --pid 0 --n_por_clase 3 --ventana --sin_menu   # sin menú
 """
 import argparse
 import csv
@@ -39,7 +31,7 @@ from datetime import datetime
 import time
 
 from psychopy import prefs
-#prefs.hardware['audioDevice'] = 'Speakers (Realtek(R) Audio)'
+prefs.hardware['audioDevice'] = 'Altavoces (2- Realtek(R) Audio)'
 prefs.hardware['audioLib'] = ['ptb', 'sounddevice']   # antes de importar sound
 prefs.hardware['audioLatencyMode'] = 3
 from psychopy import visual, core, event, sound, gui

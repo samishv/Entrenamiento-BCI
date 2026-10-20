@@ -44,6 +44,7 @@ from datetime import datetime
 import numpy as np
 
 from psychopy import prefs
+prefs.hardware['audioDevice'] = 'Altavoces (2- Realtek(R) Audio)'
 prefs.hardware['audioLib'] = ['ptb', 'sounddevice']   # antes de importar sound
 prefs.hardware['audioLatencyMode'] = 3
 from psychopy import visual, core, event, sound, gui
@@ -71,7 +72,7 @@ SUAVE_MVC_S    = 0.5        # promedio móvil para detectar el pico del MVC
 TARE_S         = 2.0        # reposo para medir la línea base
 SYNC_S         = 8.0        # duración de cada bloque de sync (apretones rápidos)
 
-FUENTE = 'Arial'
+FUENTE = 'Minecraft'  # fuente de los textos (si no está, usa la predeterminada)
 
 TEXTO_INSTR = (
     "1) Mira la cruz y evita moverte.\n\n"
