@@ -44,7 +44,7 @@ from datetime import datetime
 import numpy as np
 
 from psychopy import prefs
-prefs.hardware['audioDevice'] = 'Altavoces (2- Realtek(R) Audio)'
+#prefs.hardware['audioDevice'] = 'Altavoces (2- Realtek(R) Audio)'
 prefs.hardware['audioLib'] = ['ptb', 'sounddevice']   # antes de importar sound
 prefs.hardware['audioLatencyMode'] = 3
 from psychopy import visual, core, event, sound, gui
@@ -457,7 +457,7 @@ def main():
             raise Abortar()
         cal['base'] = float(np.median(d))
         cal['ruido'] = float(np.std(d))
-        print(f"[INFO] Tara: base={cal['base']:.4f} ruido(std)={cal['ruido']:.4f}")
+        print(f"[INFO] Cero: base={cal['base']:.4f} ruido(std)={cal['ruido']:.4f}")
 
     def calibrar():
         if a.mvc is not None:                           # MVC previo: solo tara
@@ -474,7 +474,7 @@ def main():
         txt_pico = visual.TextStim(win, text='', pos=(0, -0.45), height=0.035,
                                    color='#BDBDBD', font=FUENTE)
         while True:
-            esperar("CALIBRACIÓN DE FUERZA MÁXIMA (MVC)\n\n"
+            esperar("CALIBRACION DE FUERZA MÁXIMA MVC\n\n"
                     "1) Primero relaja la mano 2 s (calibración a cero).\n"
                     "2) Luego aprieta lo más fuerte que puedas.\n\n"
                     "Presiona ESPACIO para comenzar")
@@ -505,7 +505,7 @@ def main():
                     break
             enviar('mvc_calib_end')
             enviar(f"mvc_value={pico + cal['base']:.4f}")
-            k = esperar(f"MVC = {pico:.2f}  (raw, sin tara)\n"
+            k = esperar(f"MVC = {pico:.2f}\n\n" # Según yo ya viene en Newtons
                         f"Zona objetivo: {OBJ_PCT - TOL_PCT:.0f}-{OBJ_PCT + TOL_PCT:.0f} % "
                         f"= {pico * (OBJ_PCT - TOL_PCT) / 100:.2f}-"
                         f"{pico * (OBJ_PCT + TOL_PCT) / 100:.2f}\n\n"
@@ -514,7 +514,7 @@ def main():
             if k == 'space':
                 cal['mvc'] = pico
                 break
-        print(f"[INFO] MVC (sobre la tara) = {cal['mvc']:.4f}")
+        print(f"[INFO] MVC (con calibracion a cero) = {cal['mvc']:.4f}")
 
     # ── Sync (apretones rápidos para alinear EMG con fuerza) ────────────────
     def sync(tag):
