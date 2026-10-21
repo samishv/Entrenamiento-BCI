@@ -82,13 +82,33 @@ class MainMenu(Menu):
 
 # ===== VENTANA MENU DE CONFIG =====
 class ConfigMenu(Menu):
+    # ===== DISTRIBUCION VISUAL DEL MENU DE CONFIGURACION =====
+    TITLE_Y = 20
+    NICKNAME_Y = 70
+    NICKNAME_LINE = (280, 440)
+
+    OPTIONS_X = 120
+    
+    BT_Y = 120
+    MODE_Y = 165
+    COLOR_Y = 210
+    
+    BACK_Y = 250
+
+    PREVIEW_RECT = pygame.Rect(300, 100, 120, 120)
+    PREVIEW_FRAME_MS = 300
+
     def __init__(self, game):
         super().__init__(game)
-        self.state = "MODO"  # opciones: "BT", "MODO", "COLOR" o "Volver"
-        
+        self.state = "MODO"  # opciones: "BT", "MODO", "COLOR" o "VOLVER"
         self.nickname_buffer = ""
         self.max_nickname_len = 20
         self.cursor_blink_ms = 500
+
+        # Cache independiente para la previsualizacion del personaje.
+        # Se crea al entrar al menu, cuando los assets del juego ya existen.
+        self.preview_color = None
+        self.preview_idle_frames = []
 
     def display_menu(self):
         self.run_display = True
@@ -99,319 +119,270 @@ class ConfigMenu(Menu):
         while self.run_display:
             self.game.check_events()
 
-            # ── Nickname input ──────────────────────────────
+            # ── Entrada del nickname ──────────────────────────
             if self.game.TEXT_INPUT:
                 self.nickname_buffer += self.game.TEXT_INPUT
             if self.game.BACKSPACE and len(self.nickname_buffer) > 0:
                 self.nickname_buffer = self.nickname_buffer[:-1]
+
             allowed = set(self.game.bitmap_charset)
             self.nickname_buffer = "".join(
                 ch for ch in self.nickname_buffer if ch in allowed
             )
             self.nickname_buffer = self.nickname_buffer[:self.max_nickname_len]
-            self.check_input()
 
+            self.check_input()
             self.game.display.blit(self.game.menu_bg, (0, 0))
             mid_w, _ = self.game.display.get_rect().center
 
-            # ── Título ──────────────────────────────────────
+            # ── Titulo ────────────────────────────────────────
             title = self.game.render_bitmap_text_surface(
-                "CONFIGURACION", self.game.bitmap_font_white,
-                spacing=self.game.bitmap_spacing
+                "CONFIGURACION",
+                self.game.bitmap_font_white,
+                spacing=self.game.bitmap_spacing,
             )
             self.game.display.blit(
-                title, title.get_rect(center=(mid_w, 50 + self.offset_y))
+                title,
+                title.get_rect(center=(mid_w, self.TITLE_Y + self.offset_y)),
             )
 
-            # ── Nickname label ──────────────────────────────
+            # ── Nickname en una sola fila ─────────────────────
             nick_label = self.game.render_bitmap_text_surface(
-                "NICKNAME", self.game.bitmap_font_white,
-                spacing=self.game.bitmap_spacing
+                "NICKNAME",
+                self.game.bitmap_font_white,
+                spacing=self.game.bitmap_spacing,
             )
             self.game.display.blit(
                 nick_label,
-                nick_label.get_rect(center=(mid_w, 110 + self.offset_y))
+                nick_label.get_rect(center=(self.OPTIONS_X, self.NICKNAME_Y)),
             )
+            self._draw_nickname_field()
 
-            # ── Nickname typing + caret ─────────────────────
-            typed_y   = 140 + self.offset_y
-            base_text = self.nickname_buffer
+            # ── Opciones verticales a la izquierda ────────────
+            bt_rect = self._draw_bt_switch(self.OPTIONS_X, self.BT_Y)
+            mode_rect = self._draw_hand_mode(self.OPTIONS_X, self.MODE_Y)
+            color_rect = self._draw_player_color(self.OPTIONS_X, self.COLOR_Y)
 
-            if base_text:
-                base_surf = self.game.render_bitmap_text_surface(
-                    base_text, self.game.bitmap_font_white,
-                    spacing=self.game.bitmap_spacing
-                )
-                base_rect = base_surf.get_rect(center=(mid_w, typed_y))
-                self.game.display.blit(base_surf, base_rect)
-            else:
-                base_rect = None
+            # ── Previsualizacion animada a la derecha ─────────
+            self._draw_player_preview()
 
-            if (pygame.time.get_ticks() // self.cursor_blink_ms) % 2 == 0:
-                caret_surf = self.game.render_bitmap_text_surface(
-                    "|", self.game.bitmap_font_white,
-                    spacing=self.game.bitmap_spacing
-                )
-                if base_rect:
-                    caret_rect = caret_surf.get_rect(
-                        midleft=(base_rect.right + 2, base_rect.centery)
-                    )
-                else:
-                    caret_rect = caret_surf.get_rect(center=(mid_w, typed_y))
-                self.game.display.blit(caret_surf, caret_rect)
-
-            # ── Fila horizontal de configuracion ─────────────
-
-            options_y = 190 + self.offset_y
-
-            # Posiciones horizontales provisionales.
-            bt_x = 100
-            modo_x = 250
-            color_x = 400
-
-            # Dibujar las tres opciones.
-            bt_rect = self._draw_bt_switch(bt_x, options_y)
-            modo_rect = self._draw_hand_mode(modo_x, options_y)
-            color_rect = self._draw_player_color(color_x, options_y)
-
-            # ── Opcion Volver ────────────────────────────────
-
+            # ── Opcion Volver ─────────────────────────────────
             volver = self.game.render_bitmap_text_surface(
                 "VOLVER",
                 self.game.bitmap_font_white,
-                spacing=self.game.bitmap_spacing
+                spacing=self.game.bitmap_spacing,
             )
-
-            volver_rect = volver.get_rect(
-                center=(mid_w, 235 + self.offset_y)
-            )
-
+            volver_rect = volver.get_rect(center=(mid_w, self.BACK_Y))
             self.game.display.blit(volver, volver_rect)
 
-            # ── Cursor de la opcion seleccionada ─────────────
-
-            if self.state == "BT":
-                self.draw_cursor(bt_rect)
-
-            elif self.state == "MODO":
-                self.draw_cursor(modo_rect)
-
-            elif self.state == "COLOR":
-                self.draw_cursor(color_rect)
-
-            elif self.state == "VOLVER":
-                self.draw_cursor(volver_rect)
-
+            # ── Cursor de la opcion seleccionada ──────────────
+            option_rects = {
+                "BT": bt_rect,
+                "MODO": mode_rect,
+                "COLOR": color_rect,
+                "VOLVER": volver_rect,
+            }
+            self.draw_cursor(option_rects[self.state])
             self.blit_screen()
 
         pygame.key.stop_text_input()
         pygame.key.set_repeat()
 
-    # ── Dibuja el switch ────────────────────────────────────
-    def _draw_bt_switch(self, x, y):
-        """
-        Dibuja la opcion ARIADNE: OFF o ARIADNE: ON
-        centrada en la posicion recibida.
-        """
-        enabled = self.game.bluetooth_enabled
+    def _draw_nickname_field(self):
+        """Dibuja el nickname sobre una linea, como en el boceto."""
+        line_left, line_right = self.NICKNAME_LINE
+        y = self.NICKNAME_Y
+        pygame.draw.line(
+            self.game.display,
+            (255, 255, 255),
+            (line_left, y + 12),
+            (line_right, y + 12),
+            1,
+        )
 
+        if self.nickname_buffer:
+            nickname = self.game.render_bitmap_text_surface(
+                self.nickname_buffer,
+                self.game.bitmap_font_white,
+                spacing=self.game.bitmap_spacing,
+            )
+            nickname_rect = nickname.get_rect(
+                midbottom=((line_left + line_right) // 2, y + 5)
+            )
+            self.game.display.blit(nickname, nickname_rect)
+        else:
+            nickname_rect = None
+
+        if (pygame.time.get_ticks() // self.cursor_blink_ms) % 2 == 0:
+            caret = self.game.render_bitmap_text_surface(
+                "|",
+                self.game.bitmap_font_white,
+                spacing=self.game.bitmap_spacing,
+            )
+            if nickname_rect:
+                caret_rect = caret.get_rect(
+                    midleft=(nickname_rect.right + 2, nickname_rect.centery)
+                )
+            else:
+                caret_rect = caret.get_rect(
+                    center=((line_left + line_right) // 2, y)
+                )
+            self.game.display.blit(caret, caret_rect)
+
+    def _refresh_preview_frames(self):
+        """Recolorea el idle solo cuando cambia el color seleccionado."""
+        if self.preview_color == self.game.player_color and self.preview_idle_frames:
+            return
+
+        self.preview_idle_frames = self.game._recolor_player_images(
+            self.game.original_player_images["idle"],
+            self.game.player_color,
+        )
+        self.preview_color = self.game.player_color
+
+    def _draw_player_preview(self):
+        """Dibuja un marco y reproduce dentro la animacion idle actual."""
+        preview_rect = self.PREVIEW_RECT
+
+        # Fondo semitransparente para separar al personaje del fondo del menu.
+        preview_bg = pygame.Surface(preview_rect.size, pygame.SRCALPHA)
+        preview_bg.fill((73, 103, 141, 255))
+        self.game.display.blit(preview_bg, preview_rect.topleft)
+        pygame.draw.rect(self.game.display, (255, 255, 255), preview_rect, 2)
+
+        self._refresh_preview_frames()
+        if not self.preview_idle_frames:
+            return
+
+        frame_index = (
+            pygame.time.get_ticks() // self.PREVIEW_FRAME_MS
+        ) % len(self.preview_idle_frames)
+        frame = self.preview_idle_frames[frame_index]
+
+        # Escalado entero para conservar nitido el pixel art.
+        max_w = preview_rect.width - 20
+        max_h = preview_rect.height - 16
+        scale = max(
+            1,
+            min(max_w // frame.get_width(), max_h // frame.get_height()),
+        )
+        preview_frame = pygame.transform.scale(
+            frame,
+            (frame.get_width() * scale, frame.get_height() * scale),
+        )
+        frame_rect = preview_frame.get_rect(center=preview_rect.center)
+        self.game.display.blit(preview_frame, frame_rect)
+
+    def _draw_bt_switch(self, x, y):
+        """Dibuja ARIADNE junto con su estado ON/OFF."""
+        enabled = self.game.bluetooth_enabled
         text_str = "ON" if enabled else "OFF"
         box_color = (0, 200, 80) if enabled else (0, 0, 0)
 
-        # Texto ARIADNE:
         label = self.game.render_bitmap_text_surface(
             "ARIADNE",
             self.game.bitmap_font_white,
-            spacing=self.game.bitmap_spacing
+            spacing=self.game.bitmap_spacing,
         )
-
-        # Texto ON/OFF
         switch_text = self.game.render_bitmap_text_surface(
             text_str,
             self.game.bitmap_font_white,
-            spacing=self.game.bitmap_spacing
+            spacing=self.game.bitmap_spacing,
         )
 
         spacing_between = 4
-        box_padding_x = 4
-        box_padding_y = 2
+        padding_x, padding_y = 4, 2
+        box_w = switch_text.get_width() + padding_x * 2
+        box_h = switch_text.get_height() + padding_y * 2
+        total_width = label.get_width() + spacing_between + box_w
+        start_x = x - total_width // 2
 
-        box_w = switch_text.get_width() + (box_padding_x * 2)
-        box_h = switch_text.get_height() + (box_padding_y * 2)
-
-        total_width = (
-            label.get_width()
-            + spacing_between
-            + box_w
-        )
-
-        start_x = x - (total_width // 2)
-
-        label_rect = label.get_rect(
-            midleft=(start_x, y)
-        )
-
+        label_rect = label.get_rect(midleft=(start_x, y))
         box_rect = pygame.Rect(
             label_rect.right + spacing_between,
-            y - (box_h // 2),
+            y - box_h // 2,
             box_w,
-            box_h
+            box_h,
         )
-
         self.game.display.blit(label, label_rect)
-
-        pygame.draw.rect(
-            self.game.display,
-            box_color,
-            box_rect,
-            border_radius=3
-        )
-
+        pygame.draw.rect(self.game.display, box_color, box_rect, border_radius=3)
         self.game.display.blit(
             switch_text,
-            switch_text.get_rect(center=box_rect.center)
+            switch_text.get_rect(center=box_rect.center),
         )
+        return label_rect.union(box_rect)
 
-        option_rect = label_rect.union(box_rect)
-
-        self._bt_rect = box_rect
-        self._bt_option_rect = option_rect
-
-        return option_rect
-        
     def _draw_hand_mode(self, x, y):
-        """
-        Dibuja unicamente DIESTRO o ZURDO.
-        """
-        text = self.game.hand_mode
-    
+        """Dibuja unicamente DIESTRO o ZURDO."""
         mode_surface = self.game.render_bitmap_text_surface(
-            text,
+            self.game.hand_mode,
             self.game.bitmap_font_white,
-            spacing=self.game.bitmap_spacing
+            spacing=self.game.bitmap_spacing,
         )
-    
-        mode_rect = mode_surface.get_rect(
-            center=(x, y)
-        )
-    
-        self.game.display.blit(
-            mode_surface,
-            mode_rect
-        )
-    
+        mode_rect = mode_surface.get_rect(center=(x, y))
+        self.game.display.blit(mode_surface, mode_rect)
         return mode_rect
 
     def _draw_player_color(self, x, y):
-        """
-        Dibuja unicamente el nombre del color seleccionado.
-        El cuadro de color se conserva debajo de las letras.
-        """
-    
-        # Crear el texto con el nombre del color.
+        """Dibuja el nombre del color sobre su cuadro de color."""
         color_surface = self.game.render_bitmap_text_surface(
             self.game.player_color,
             self.game.bitmap_font_white,
-            spacing=self.game.bitmap_spacing
+            spacing=self.game.bitmap_spacing,
         )
-    
-        # Espacio adicional alrededor de las letras.
-        padding_x = 4
-        padding_y = 2
-    
-        # El cuadro se adapta al tamaño del nombre del color.
-        color_box_width = color_surface.get_width() + (padding_x * 2)
-        color_box_height = color_surface.get_height() + (padding_y * 2)
-    
-        # Centrar el cuadro en la posicion recibida.
+        padding_x, padding_y = 4, 2
         color_box_rect = pygame.Rect(
-            x - (color_box_width // 2),
-            y - (color_box_height // 2),
-            color_box_width,
-            color_box_height
+            x - (color_surface.get_width() + padding_x * 2) // 2,
+            y - (color_surface.get_height() + padding_y * 2) // 2,
+            color_surface.get_width() + padding_x * 2,
+            color_surface.get_height() + padding_y * 2,
         )
-    
-        # Obtener el color correspondiente a la gama seleccionada.
-        background_color = self.game.get_player_menu_color()
-    
-        # Dibujar primero el cuadro de color.
         pygame.draw.rect(
             self.game.display,
-            background_color,
+            self.game.get_player_menu_color(),
             color_box_rect,
-            border_radius=3
+            border_radius=3,
         )
-    
-        # Dibujar el nombre del color encima del cuadro.
-        color_text_rect = color_surface.get_rect(
-            center=color_box_rect.center
-        )
-    
         self.game.display.blit(
             color_surface,
-            color_text_rect
+            color_surface.get_rect(center=color_box_rect.center),
         )
-    
-        # Este rectangulo se usa para colocar el cursor de seleccion.
         return color_box_rect
 
     def check_input(self):
         """
-        Navegacion visual del menu:
+        Navegacion vertical del nuevo acomodo:
 
-        BT  <->  MODO  <->  COLOR
-                  |
-                VOLVER
+        ARIADNE
+           |
+          MODO
+           |
+          COLOR
+           |
+         VOLVER
+
+        ENTER ejecuta la opcion. En BT, MODO y COLOR tambien se puede usar
+        IZQUIERDA/DERECHA para cambiar el valor sin alterar la seleccion.
         """
+        options = ["BT", "MODO", "COLOR", "VOLVER"]
+        current_index = options.index(self.state)
 
-        top_options = ["BT", "MODO", "COLOR"]
+        if self.game.DOWN_KEY:
+            self.state = options[(current_index + 1) % len(options)]
+        elif self.game.UP_KEY:
+            self.state = options[(current_index - 1) % len(options)]
 
-        # ── Navegacion horizontal ────────────────────────────
-
-        if self.state in top_options:
-            current_index = top_options.index(self.state)
-
-            if self.game.RIGHT_KEY:
-                self.state = top_options[
-                    (current_index + 1) % len(top_options)
-                ]
-
-            elif self.game.LEFT_KEY:
-                self.state = top_options[
-                    (current_index - 1) % len(top_options)
-                ]
-
-            # Desde cualquier opcion superior, abajo va a Volver.
-            elif self.game.DOWN_KEY:
-                self.state = "VOLVER"
-
-        # ── Navegacion desde Volver ──────────────────────────
-
-        elif self.state == "VOLVER":
-
-            # Arriba siempre regresa a la opcion central MODO.
-            if self.game.UP_KEY:
-                self.state = "MODO"
-
-        # ── Ejecutar la opcion seleccionada ──────────────────
-
-        if self.game.START_KEY:
-
+        change_value = self.game.LEFT_KEY or self.game.RIGHT_KEY
+        if self.game.START_KEY or change_value:
             if self.state == "BT":
-                self.game.bluetooth_enabled = (
-                    not self.game.bluetooth_enabled
-                )
-
+                self.game.bluetooth_enabled = not self.game.bluetooth_enabled
             elif self.state == "MODO":
                 self.game.toggle_hand_mode()
-
             elif self.state == "COLOR":
                 self.game.next_player_color()
-
-            elif self.state == "VOLVER":
+            elif self.state == "VOLVER" and self.game.START_KEY:
                 self._save_and_return()
 
-        # Escape regresa al menu principal.
         if self.game.BACK_KEY:
             self._save_and_return()
 
@@ -421,7 +392,6 @@ class ConfigMenu(Menu):
             self.game.gamer_tag = cleaned
         self.game.curr_menu = self.game.main_menu
         self.run_display = False
-
 
 # ===== VENTANA NIVELES =====
 class LevelsMenu(Menu):

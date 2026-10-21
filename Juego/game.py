@@ -19,9 +19,9 @@ from menu import MainMenu, ConfigMenu, LevelsMenu
 # =============================================================================
 
 # ===== JUGABILIDAD =====
-AUTO_SPEED = 10                      # Velocidad del autorun (px por frame) ERA 2
+AUTO_SPEED = 2                      # Velocidad del autorun (px por frame) ERA 2
 FAIL_RETURN_SPEED = 1.2             # Velocidad del autorun mientras el jugador se recupera de un fallo ERA 1.2
-TOTAL_CHALLENGES = 5               # Cantidad de desafíos (globos) por nivel
+TOTAL_CHALLENGES = 10               # Cantidad de desafíos (globos) por nivel
 FIRST_STOP_TILE = 38                # Tile donde se detiene el jugador en el primer desafío
 CHALLENGE_SPACING_TILES = 60        # Distancia (en tiles) entre un desafío y el siguiente
 MAX_PRESSES = 1                     # Pulsaciones necesarias para reventar un globo
@@ -43,53 +43,121 @@ PLAYER_COLOR_PALETTES = {
         (128, 184, 120),  # #80B878
         (101, 141, 120),  # #658D78
     ),
+
+    "MENTA": (
+        (192, 243, 214),  # #C0F3D6
+        (114, 214, 160),  # #72D6A0
+        (56, 138, 100),   # #388A64
+    ),
+
     "TURQUESA": (
         (127, 216, 232),  # #7FD8E8
         (72, 183, 200),   # #48B7C8
         (46, 127, 143),   # #2E7F8F
     ),
+
     "AZUL": (
         (93, 169, 255),   # #5DA9FF
         (59, 130, 246),   # #3B82F6
         (30, 58, 138),    # #1E3A8A
     ),
+
+    "INDIGO": (
+        (159, 168, 255),  # #9FA8FF
+        (92, 106, 207),   # #5C6ACF
+        (48, 56, 120),    # #303878
+    ),
+
     "MORADO": (
         (192, 132, 252),  # #C084FC
         (139, 92, 246),   # #8B5CF6
         (107, 33, 168),   # #6B21A8
     ),
+
     "ROSA": (
         (255, 167, 209),  # #FFA7D1
         (244, 114, 182),  # #F472B6
         (214, 51, 132),   # #D63384
     ),
-    "MARRON": (
-        (217, 179, 140),  # #D9B38C
-        (166, 120, 86),   # #A67856
-        (107, 79, 55),    # #6B4F37
+
+    "VINO": (
+        (217, 107, 130),  # #D96B82
+        (166, 61, 90),    # #A63D5A
+        (100, 31, 56),    # #641F38
     ),
-    "GRIS": (
-        (200, 205, 212),  # #C8CDD4
-        (154, 163, 173),  # #9AA3AD
-        (92, 101, 112),   # #5C6570
-    ),
+
     "ROJO": (
         (255, 107, 107),  # #FF6B6B
         (230, 57, 70),    # #E63946
         (178, 34, 60),    # #B2223C
     ),
+
+    "CORAL": (
+        (255, 176, 159),  # #FFB09F
+        (244, 119, 97),   # #F47761
+        (185, 71, 61),    # #B9473D
+    ),
+
+    "MARRON": (
+        (217, 179, 140),  # #D9B38C
+        (166, 120, 86),   # #A67856
+        (107, 79, 55),    # #6B4F37
+    ),
+
     "NARANJA": (
         (255, 179, 102),  # #FFB366
         (251, 140, 0),    # #FB8C00
         (180, 83, 9),     # #B45309
     ),
+
+    "DORADO": (
+        (255, 217, 120),  # #FFD978
+        (217, 166, 46),   # #D9A62E
+        (138, 98, 24),    # #8A6218
+    ),
+
     "AMARILLO": (
         (255, 224, 102),  # #FFE066
         (250, 204, 21),   # #FACC15
         (176, 137, 0),    # #B08900
     ),
-}
 
+    "BEIGE": (
+        (240, 217, 181),  # #F0D9B5
+        (201, 170, 125),  # #C9AA7D
+        (140, 112, 79),   # #8C704F
+    ),
+
+    "OLIVA": (
+        (199, 201, 122),  # #C7C97A
+        (146, 148, 71),   # #929447
+        (95, 97, 45),     # #5F612D
+    ),
+
+    "LIMA": (
+        (215, 247, 91),   # #D7F75B
+        (156, 211, 38),   # #9CD326
+        (84, 140, 27),    # #548C1B
+    ),
+
+    "BLANCO": (
+        (247, 247, 242),  # #F7F7F2
+        (218, 221, 226),  # #DADDE2
+        (167, 173, 183),  # #A7ADB7
+    ),
+
+    "GRIS": (
+        (200, 205, 212),  # #C8CDD4
+        (154, 163, 173),  # #9AA3AD
+        (92, 101, 112),   # #5C6570
+    ),
+
+    "NEGRO": (
+        (85, 91, 102),    # #555B66
+        (48, 52, 59),     # #30343B
+        (22, 24, 29),     # #16181D
+    ),
+}
 # ===== FONDO PARALLAX =====
 PARALLAX_LAYER_SPEEDS = [0.25, 0.50, 0.85]   # Factor de velocidad de cada capa móvil
 PARALLAX_BASE_SPEED = 20.0                   # Velocidad base del fondo (px/s)
