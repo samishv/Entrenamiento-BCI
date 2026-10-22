@@ -31,7 +31,8 @@ from datetime import datetime
 import time
 
 from psychopy import prefs
-prefs.hardware['audioDevice'] = 'Altavoces (2- Realtek(R) Audio)'
+#prefs.hardware['audioDevice'] = 'Altavoces (2- Realtek(R) Audio)'#COMPU LIBS
+prefs.hardware['audioDevice'] = 'Speaker / Headphone (Realtek(R) Audio)'#COMPU SAM 
 prefs.hardware['audioLib'] = ['ptb', 'sounddevice']   # antes de importar sound
 prefs.hardware['audioLatencyMode'] = 3
 from psychopy import visual, core, event, sound, gui
@@ -47,7 +48,7 @@ REPOSO_S       = 5.0        # pantalla negra, fijo
 REPOSO_MARCA_S = 3.0        # marcador 'reposo_3s' a los 3 s de reposo_start
 N_POR_CLASE    = 15
 MAX_REPETIDAS  = 3          # nunca más de 3 trials seguidos de la misma clase
-BEEP_HZ, BEEP_S = 1000, 0.3
+BEEP_HZ, BEEP_S = 700, 0.3
 
 # Cue: color o imagen. Mapeo A/B para contrabalancear entre sujetos/sesiones.
 # Colores con luminancia aproximada igualada (verifícala en tu monitor).
