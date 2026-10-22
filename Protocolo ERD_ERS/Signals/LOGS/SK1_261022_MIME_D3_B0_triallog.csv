@@ -1,0 +1,3 @@
+trial,clase,mapeo,seed,fps,jitter_plan,fijacion_plan,tarea_plan,reposo_plan,t_jitter_lsl,t_fix_lsl,t_cue_lsl,t_reposo_lsl,t_reposo3s_lsl,dur_jitter_real,dur_fijacion_real,dur_tarea_real,dur_reposo_3s_real,frames_perdidos
+1,ME,B,1792708009,226.49,1.852,3.0,5.0,5.0,6150.013658,6150.493994,6151.269527,6152.258644,6152.732485,0.4803,0.7755,0.9891,0.4738,0
+2,MI,B,1792708009,226.49,1.699,3.0,5.0,5.0,6153.040910,6153.482303,6154.273587,6155.269236,6155.771739,0.4414,0.7913,0.9956,0.5025,0
