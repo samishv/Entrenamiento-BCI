@@ -351,8 +351,7 @@ class ConfigMenu(Menu):
 
     def check_input(self):
         """
-        Navegacion vertical del nuevo acomodo:
-
+        Navegacion vertical:
         ARIADNE
            |
           MODO
@@ -360,29 +359,52 @@ class ConfigMenu(Menu):
           COLOR
            |
          VOLVER
-
-        ENTER ejecuta la opcion. En BT, MODO y COLOR tambien se puede usar
-        IZQUIERDA/DERECHA para cambiar el valor sin alterar la seleccion.
+    
+        En COLOR:
+        - DERECHA avanza al siguiente color.
+        - IZQUIERDA regresa al color anterior.
+        - ENTER avanza al siguiente color.
         """
+    
         options = ["BT", "MODO", "COLOR", "VOLVER"]
         current_index = options.index(self.state)
-
+    
+        # Navegacion vertical entre opciones
         if self.game.DOWN_KEY:
             self.state = options[(current_index + 1) % len(options)]
+    
         elif self.game.UP_KEY:
             self.state = options[(current_index - 1) % len(options)]
-
-        change_value = self.game.LEFT_KEY or self.game.RIGHT_KEY
-        if self.game.START_KEY or change_value:
-            if self.state == "BT":
+    
+        # Acciones de la opcion seleccionada
+        if self.state == "BT":
+            if (
+                self.game.LEFT_KEY
+                or self.game.RIGHT_KEY
+                or self.game.START_KEY
+            ):
                 self.game.bluetooth_enabled = not self.game.bluetooth_enabled
-            elif self.state == "MODO":
+    
+        elif self.state == "MODO":
+            if (
+                self.game.LEFT_KEY
+                or self.game.RIGHT_KEY
+                or self.game.START_KEY
+            ):
                 self.game.toggle_hand_mode()
-            elif self.state == "COLOR":
+    
+        elif self.state == "COLOR":
+            if self.game.RIGHT_KEY or self.game.START_KEY:
                 self.game.next_player_color()
-            elif self.state == "VOLVER" and self.game.START_KEY:
+    
+            elif self.game.LEFT_KEY:
+                self.game.previous_player_color()
+    
+        elif self.state == "VOLVER":
+            if self.game.START_KEY:
                 self._save_and_return()
-
+    
+        # ESC también permite regresar
         if self.game.BACK_KEY:
             self._save_and_return()
 
