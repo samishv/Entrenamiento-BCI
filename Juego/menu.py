@@ -1,4 +1,5 @@
 import pygame
+import os
 
 class Menu:
     def __init__(self, game):
@@ -95,20 +96,71 @@ class ConfigMenu(Menu):
     
     BACK_Y = 250
 
+    # =========================================================
+    # TARJETA DE PREVISUALIZACION
+    # =========================================================
+    
     PREVIEW_RECT = pygame.Rect(300, 100, 120, 120)
-    PREVIEW_FRAME_MS = 300
+    
+    # Duracion de cada frame, expresada en milisegundos.
+    # Un valor menor produce una animacion mas rapida.
+    COLOR_PREVIEW_FRAME_MS = 300
+    HAND_PREVIEW_FRAME_MS = 150
+    ARIADNE_PREVIEW_FRAME_MS = 300
+    
+    # Margenes internos para escalar cada tipo de animacion.
+    COLOR_PREVIEW_MARGIN_X = 20
+    COLOR_PREVIEW_MARGIN_Y = 16
+    
+    HAND_PREVIEW_MARGIN_X = 20
+    HAND_PREVIEW_MARGIN_Y = 20
+    
+    ARIADNE_PREVIEW_MARGIN_X = 20
+    ARIADNE_PREVIEW_MARGIN_Y = 20
+    
+    # Carpetas de las animaciones.
+    HAND_RIGHT_PREVIEW_FOLDER = os.path.join(
+        "data", "images", "entities", "hand"
+    )
+    
+    HAND_LEFT_PREVIEW_FOLDER = os.path.join(
+        "data", "images", "entities", "hand_left"
+    )
+    
+    ARIADNE_PREVIEW_FOLDER = os.path.join(
+        "data", "images", "entities", "disp_vib"
+    )
 
     def __init__(self, game):
         super().__init__(game)
-        self.state = "MODO"  # opciones: "BT", "MODO", "COLOR" o "VOLVER"
+        self.state = "VOLVER"  # opciones: "BT", "MODO", "COLOR" o "VOLVER"
         self.nickname_buffer = ""
         self.max_nickname_len = 20
         self.cursor_blink_ms = 500
 
-        # Cache independiente para la previsualizacion del personaje.
-        # Se crea al entrar al menu, cuando los assets del juego ya existen.
+        # =========================================================
+        # ESTADO DE LA PREVISUALIZACION
+        # =========================================================
+        
+        # La vista previa comienza mostrando el personaje.
+        self.preview_state = "COLOR"
+        
+        # Permite reiniciar la animacion cuando cambia el contenido
+        # mostrado en la tarjeta.
+        self.preview_animation_key = None
+        self.preview_animation_start_ms = pygame.time.get_ticks()
+        
+        # Cache del personaje recoloreado.
         self.preview_color = None
         self.preview_idle_frames = []
+        
+        # Las animaciones se cargan de manera diferida porque ConfigMenu
+        # se construye antes de que Game termine de cargar todos sus assets.
+        self.preview_external_frames_loaded = False
+        
+        self.preview_hand_right_frames = []
+        self.preview_hand_left_frames = []
+        self.preview_ariadne_frames = []
 
     def display_menu(self):
         self.run_display = True
@@ -132,6 +184,7 @@ class ConfigMenu(Menu):
             self.nickname_buffer = self.nickname_buffer[:self.max_nickname_len]
 
             self.check_input()
+            self._update_preview_state()
             self.game.display.blit(self.game.menu_bg, (0, 0))
             mid_w, _ = self.game.display.get_rect().center
 
@@ -228,6 +281,163 @@ class ConfigMenu(Menu):
                     center=((line_left + line_right) // 2, y)
                 )
             self.game.display.blit(caret, caret_rect)
+            
+    def _load_preview_folder(self, folder_path):
+        """
+        Carga todas las imagenes PNG de una carpeta y devuelve
+        una lista de superficies ordenadas por nombre.
+    
+        Ejemplo:
+            01.png
+            02.png
+            03.png
+            04.png
+        """
+        if not os.path.isdir(folder_path):
+            print(
+                "[MENU] No se encontro la carpeta de previsualizacion:",
+                folder_path,
+            )
+            return []
+    
+        image_names = sorted(
+            file_name
+            for file_name in os.listdir(folder_path)
+            if file_name.lower().endswith(".png")
+        )
+    
+        frames = []
+    
+        for image_name in image_names:
+            image_path = os.path.join(folder_path, image_name)
+    
+            try:
+                frame = pygame.image.load(image_path).convert_alpha()
+                frames.append(frame)
+    
+            except pygame.error as error:
+                print(
+                    f"[MENU] No se pudo cargar {image_path}: {error}"
+                )
+    
+        return frames
+    
+    
+    def _load_external_preview_frames(self):
+        """
+        Carga una sola vez las animaciones de las manos y ARIADNE.
+    
+        La carga se hace al abrir el menu, no durante __init__,
+        porque ConfigMenu se crea antes de que Game termine de
+        inicializar todos sus recursos.
+        """
+        if self.preview_external_frames_loaded:
+            return
+    
+        self.preview_hand_right_frames = self._load_preview_folder(
+            self.HAND_RIGHT_PREVIEW_FOLDER
+        )
+    
+        self.preview_hand_left_frames = self._load_preview_folder(
+            self.HAND_LEFT_PREVIEW_FOLDER
+        )
+    
+        self.preview_ariadne_frames = self._load_preview_folder(
+            self.ARIADNE_PREVIEW_FOLDER
+        )
+    
+        self.preview_external_frames_loaded = True
+        
+    def _update_preview_state(self):
+        """
+        Actualiza el contenido de la tarjeta segun la opcion
+        seleccionada por el cursor.
+    
+        VOLVER no modifica preview_state, por lo que conserva
+        la ultima animacion seleccionada.
+        """
+        if self.state in ("BT", "MODO", "COLOR"):
+            self.preview_state = self.state
+            
+    def _get_current_preview_animation(self):
+        """
+        Devuelve:
+    
+            animation_key
+            frames
+            frame_duration_ms
+            margin_x
+            margin_y
+    
+        animation_key permite detectar cuando cambia la animacion
+        y reiniciar su reproduccion desde el primer frame.
+        """
+    
+        # ---------------------------------------------------------
+        # COLOR DEL PERSONAJE
+        # ---------------------------------------------------------
+        if self.preview_state == "COLOR":
+            self._refresh_preview_frames()
+    
+            animation_key = (
+                "COLOR",
+                self.game.player_color,
+            )
+    
+            return (
+                animation_key,
+                self.preview_idle_frames,
+                self.COLOR_PREVIEW_FRAME_MS,
+                self.COLOR_PREVIEW_MARGIN_X,
+                self.COLOR_PREVIEW_MARGIN_Y,
+            )
+    
+        # ---------------------------------------------------------
+        # MODO DE MANO
+        # ---------------------------------------------------------
+        if self.preview_state == "MODO":
+            if self.game.hand_mode == "ZURDO":
+                animation_key = ("MODO", "ZURDO")
+                frames = self.preview_hand_left_frames
+            else:
+                animation_key = ("MODO", "DIESTRO")
+                frames = self.preview_hand_right_frames
+    
+            return (
+                animation_key,
+                frames,
+                self.HAND_PREVIEW_FRAME_MS,
+                self.HAND_PREVIEW_MARGIN_X,
+                self.HAND_PREVIEW_MARGIN_Y,
+            )
+    
+        # ---------------------------------------------------------
+        # ARIADNE
+        # ---------------------------------------------------------
+        if self.preview_state == "BT":
+            animation_key = (
+                "BT",
+                self.game.bluetooth_enabled,
+            )
+    
+            return (
+                animation_key,
+                self.preview_ariadne_frames,
+                self.ARIADNE_PREVIEW_FRAME_MS,
+                self.ARIADNE_PREVIEW_MARGIN_X,
+                self.ARIADNE_PREVIEW_MARGIN_Y,
+            )
+    
+        # Respaldo: si el estado no fuera reconocido, muestra color.
+        self._refresh_preview_frames()
+    
+        return (
+            ("COLOR", self.game.player_color),
+            self.preview_idle_frames,
+            self.COLOR_PREVIEW_FRAME_MS,
+            self.COLOR_PREVIEW_MARGIN_X,
+            self.COLOR_PREVIEW_MARGIN_Y,
+        )
 
     def _refresh_preview_frames(self):
         """Recolorea el idle solo cuando cambia el color seleccionado."""
@@ -241,37 +451,114 @@ class ConfigMenu(Menu):
         self.preview_color = self.game.player_color
 
     def _draw_player_preview(self):
-        """Dibuja un marco y reproduce dentro la animacion idle actual."""
+        """
+        Dibuja la tarjeta de previsualizacion y reproduce una
+        animacion distinta segun la opcion seleccionada:
+    
+            BT     -> ARIADNE
+            MODO   -> mano derecha o izquierda
+            COLOR  -> personaje idle recoloreado
+            VOLVER -> conserva la ultima seleccion
+        """
         preview_rect = self.PREVIEW_RECT
-
-        # Fondo semitransparente para separar al personaje del fondo del menu.
-        preview_bg = pygame.Surface(preview_rect.size, pygame.SRCALPHA)
+    
+        # Cargar las animaciones externas solo una vez.
+        self._load_external_preview_frames()
+    
+        # Fondo solido de la tarjeta.
+        preview_bg = pygame.Surface(
+            preview_rect.size,
+            pygame.SRCALPHA,
+        )
         preview_bg.fill((73, 103, 141, 255))
-        self.game.display.blit(preview_bg, preview_rect.topleft)
-        pygame.draw.rect(self.game.display, (255, 255, 255), preview_rect, 2)
-
-        self._refresh_preview_frames()
-        if not self.preview_idle_frames:
+    
+        self.game.display.blit(
+            preview_bg,
+            preview_rect.topleft,
+        )
+    
+        # Borde exterior.
+        pygame.draw.rect(
+            self.game.display,
+            (255, 255, 255),
+            preview_rect,
+            2,
+        )
+    
+        (
+            animation_key,
+            frames,
+            frame_duration_ms,
+            margin_x,
+            margin_y,
+        ) = self._get_current_preview_animation()
+    
+        # Si cambia la animacion, se reinicia desde el primer frame.
+        if animation_key != self.preview_animation_key:
+            self.preview_animation_key = animation_key
+            self.preview_animation_start_ms = pygame.time.get_ticks()
+    
+        if not frames:
             return
-
+    
+        # Evitar una division entre cero si se coloca accidentalmente
+        # una duracion igual o menor que cero.
+        frame_duration_ms = max(1, frame_duration_ms)
+    
+        elapsed_ms = (
+            pygame.time.get_ticks()
+            - self.preview_animation_start_ms
+        )
+    
         frame_index = (
-            pygame.time.get_ticks() // self.PREVIEW_FRAME_MS
-        ) % len(self.preview_idle_frames)
-        frame = self.preview_idle_frames[frame_index]
-
-        # Escalado entero para conservar nitido el pixel art.
-        max_w = preview_rect.width - 20
-        max_h = preview_rect.height - 16
+            elapsed_ms // frame_duration_ms
+        ) % len(frames)
+    
+        frame = frames[frame_index]
+    
+        # Area maxima disponible dentro de la tarjeta.
+        max_width = max(
+            1,
+            preview_rect.width - margin_x,
+        )
+    
+        max_height = max(
+            1,
+            preview_rect.height - margin_y,
+        )
+    
+        frame_width = frame.get_width()
+        frame_height = frame.get_height()
+    
+        if frame_width <= 0 or frame_height <= 0:
+            return
+    
+        # Escala entera para mantener nitido el pixel art.
         scale = max(
             1,
-            min(max_w // frame.get_width(), max_h // frame.get_height()),
+            min(
+                max_width // frame_width,
+                max_height // frame_height,
+            ),
         )
+    
         preview_frame = pygame.transform.scale(
             frame,
-            (frame.get_width() * scale, frame.get_height() * scale),
+            (
+                frame_width * scale,
+                frame_height * scale,
+            ),
         )
-        frame_rect = preview_frame.get_rect(center=preview_rect.center)
-        self.game.display.blit(preview_frame, frame_rect)
+    
+        frame_rect = preview_frame.get_rect(
+            center=preview_rect.center
+        )
+    
+        self.game.display.blit(
+            preview_frame,
+            frame_rect,
+        )
+
 
     def _draw_bt_switch(self, x, y):
         """Dibuja ARIADNE junto con su estado ON/OFF."""
@@ -417,63 +704,345 @@ class ConfigMenu(Menu):
 
 # ===== VENTANA NIVELES =====
 class LevelsMenu(Menu):
+
+    # =========================================================
+    # DISTRIBUCION VISUAL DEL MENU DE NIVELES
+    # =========================================================
+
+    # Posicion vertical del titulo principal.
+    TITLE_Y = 20
+
+    # Centro horizontal de cada tarjeta.
+    LEVEL_1_X = 120
+    LEVEL_2_X = 360
+
+    # Posicion vertical superior de ambas tarjetas.
+    LEVEL_CARDS_Y = 70
+
+    # Tamaño completo de las tarjetas.
+    LEVEL_CARD_WIDTH = 180
+    LEVEL_CARD_HEIGHT = 120
+
+    # Espacio entre el borde de la tarjeta y la imagen.
+    LEVEL_CARD_PADDING = 5
+
+    # Posicion vertical de los nombres de los niveles.
+    LEVEL_LABEL_Y = 210
+
+    # Posicion vertical de la opcion VOLVER.
+    BACK_Y = 250
+
+    # Grosor del borde blanco que rodea cada tarjeta.
+    CARD_BORDER_WIDTH = 2
+
+    # Colores sólidos de fondo.
+    # Estos colores se muestran debajo de las cuatro capas.
+    LEVEL_1_BASE_COLOR = (55, 73, 103)
+    LEVEL_2_BASE_COLOR = (55, 73, 103)
+
     def __init__(self, game):
         super().__init__(game)
+
         self.options = ["NIVEL 1", "NIVEL 2", "VOLVER"]
         self.index = 0
 
+        # Las cuatro capas de cada nivel se cargan una sola vez.
+        self.level_preview_layers = {
+            1: self._load_level_preview_layers(1),
+            2: self._load_level_preview_layers(2),
+        }
+
+    def _load_level_preview_layers(self, level_id):
+        """
+        Carga las cuatro imágenes 01.png, 02.png, 03.png y 04.png
+        correspondientes al nivel indicado.
+
+        Las imágenes preservan su transparencia y se escalan al área
+        interior de la tarjeta.
+        """
+        folder_name = f"level{level_id}"
+
+        folder_path = os.path.join(
+            "data",
+            "images",
+            "background",
+            folder_name,
+        )
+
+        inner_width = self.LEVEL_CARD_WIDTH - (
+            self.LEVEL_CARD_PADDING * 2
+        )
+        inner_height = self.LEVEL_CARD_HEIGHT - (
+            self.LEVEL_CARD_PADDING * 2
+        )
+
+        layers = []
+
+        for image_number in range(1, 5):
+            image_path = os.path.join(
+                folder_path,
+                f"{image_number:02d}.png",
+            )
+
+            image = pygame.image.load(image_path).convert_alpha()
+
+            # Se utiliza scale en lugar de smoothscale para conservar
+            # mejor el aspecto del pixel art.
+            image = pygame.transform.scale(
+                image,
+                (inner_width, inner_height),
+            )
+
+            layers.append(image)
+
+        return layers
+
+    def _get_level_card_rect(self, center_x):
+        """
+        Devuelve el rectángulo completo de una tarjeta tomando
+        como referencia su centro horizontal.
+        """
+        return pygame.Rect(
+            center_x - self.LEVEL_CARD_WIDTH // 2,
+            self.LEVEL_CARDS_Y,
+            self.LEVEL_CARD_WIDTH,
+            self.LEVEL_CARD_HEIGHT,
+        )
+
+    def _draw_level_card(self, level_id, center_x, base_color):
+        """
+        Dibuja una tarjeta de nivel:
+
+        1. Rectángulo de color sólido.
+        2. Las cuatro capas del fondo.
+        3. Un borde blanco.
+        """
+        card_rect = self._get_level_card_rect(center_x)
+
+        inner_rect = card_rect.inflate(
+            -(self.LEVEL_CARD_PADDING * 2),
+            -(self.LEVEL_CARD_PADDING * 2),
+        )
+
+        # Base de color sólido.
+        pygame.draw.rect(
+            self.game.display,
+            base_color,
+            card_rect,
+        )
+
+        # Las capas se dibujan en orden:
+        # 01.png, 02.png, 03.png y 04.png.
+        for layer in self.level_preview_layers[level_id]:
+            self.game.display.blit(layer, inner_rect.topleft)
+
+        # Borde exterior de la tarjeta.
+        pygame.draw.rect(
+            self.game.display,
+            (255, 255, 255),
+            card_rect,
+            self.CARD_BORDER_WIDTH,
+        )
+
+        return card_rect
+
+    def _draw_level_label(self, text, center_x):
+        """
+        Dibuja el nombre del nivel debajo de su tarjeta.
+        """
+        label = self.game.render_bitmap_text_surface(
+            text,
+            self.game.bitmap_font_white,
+            spacing=self.game.bitmap_spacing,
+        )
+
+        label_rect = label.get_rect(
+            center=(center_x, self.LEVEL_LABEL_Y)
+        )
+
+        self.game.display.blit(label, label_rect)
+
+        return label_rect
+
     def display_menu(self):
         self.run_display = True
+
         while self.run_display:
             self.game.check_events()
             self.check_input()
 
+            # Fondo general del menu.
             self.game.display.blit(self.game.menu_bg, (0, 0))
+
             mid_w, _ = self.game.display.get_rect().center
 
-            # ===== TITULO DE NIVELES =====
+            # =====================================================
+            # TITULO
+            # =====================================================
             title = self.game.render_bitmap_text_surface(
-                "NIVELES", self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
+                "NIVELES",
+                self.game.bitmap_font_white,
+                spacing=self.game.bitmap_spacing,
             )
-            title_rect = title.get_rect(center=(mid_w, 50 + self.offset_y))
+
+            title_rect = title.get_rect(
+                center=(
+                    mid_w,
+                    self.TITLE_Y + self.offset_y,
+                )
+            )
+
             self.game.display.blit(title, title_rect)
 
-            # ===== ALTURAS PARA LVL 1, LVL 2 Y VOLVER =====
-            posiciones_y = [110, 140, 200]
-            option_rects = []
-            for i, opt in enumerate(self.options):
-                surf = self.game.render_bitmap_text_surface(
-                    opt, self.game.bitmap_font_white, spacing=self.game.bitmap_spacing
-                )
-                rect = surf.get_rect(center=(mid_w, posiciones_y[i] + self.offset_y))
-                self.game.display.blit(surf, rect)
-                option_rects.append(rect)
+            # =====================================================
+            # TARJETAS DE LOS NIVELES
+            # =====================================================
+            level_1_card_rect = self._draw_level_card(
+                level_id=1,
+                center_x=self.LEVEL_1_X,
+                base_color=self.LEVEL_1_BASE_COLOR,
+            )
+
+            level_2_card_rect = self._draw_level_card(
+                level_id=2,
+                center_x=self.LEVEL_2_X,
+                base_color=self.LEVEL_2_BASE_COLOR,
+            )
+
+            # =====================================================
+            # NOMBRES DE LOS NIVELES
+            # =====================================================
+            level_1_label_rect = self._draw_level_label(
+                "NIVEL 1",
+                self.LEVEL_1_X,
+            )
+
+            level_2_label_rect = self._draw_level_label(
+                "NIVEL 2",
+                self.LEVEL_2_X,
+            )
+
+            # =====================================================
+            # OPCION VOLVER
+            # =====================================================
+            volver = self.game.render_bitmap_text_surface(
+                "VOLVER",
+                self.game.bitmap_font_white,
+                spacing=self.game.bitmap_spacing,
+            )
+
+            volver_rect = volver.get_rect(
+                center=(mid_w, self.BACK_Y)
+            )
+
+            self.game.display.blit(volver, volver_rect)
+
+            # =====================================================
+            # AREAS UTILIZADAS POR EL CURSOR
+            # =====================================================
+            # La unión de cada tarjeta con su etiqueta permite que
+            # el cursor quede centrado respecto al conjunto visual.
+            level_1_option_rect = level_1_card_rect.union(
+                level_1_label_rect
+            )
+
+            level_2_option_rect = level_2_card_rect.union(
+                level_2_label_rect
+            )
+
+            option_rects = [
+                level_1_option_rect,
+                level_2_option_rect,
+                volver_rect,
+            ]
 
             self.draw_cursor(option_rects[self.index])
+
             self.blit_screen()
 
     def check_input(self):
+        """
+        Distribucion de las opciones:
+    
+            NIVEL 1  <-->  NIVEL 2
+                 \          /
+                     VOLVER
+    
+        Indices:
+            0 = NIVEL 1
+            1 = NIVEL 2
+            2 = VOLVER
+        """
+    
+        # =========================================================
+        # NAVEGACION VERTICAL
+        # =========================================================
+    
         if self.game.DOWN_KEY:
-            self.index = (self.index + 1) % len(self.options)
-        if self.game.UP_KEY:
-            self.index = (self.index - 1) % len(self.options)
-
+            # Desde cualquiera de los dos niveles baja a VOLVER.
+            if self.index == 0 or self.index == 1:
+                self.index = 2
+    
+            # Si ya está en VOLVER, no realiza ningún movimiento.
+    
+        elif self.game.UP_KEY:
+            # Desde VOLVER sube directamente a NIVEL 1.
+            if self.index == 2:
+                self.index = 0
+    
+            # Si ya está en algún nivel, no realiza ningún movimiento.
+    
+        # =========================================================
+        # NAVEGACION HORIZONTAL
+        # =========================================================
+    
+        elif self.game.RIGHT_KEY:
+            # NIVEL 1 -> NIVEL 2
+            if self.index == 0:
+                self.index = 1
+    
+            # NIVEL 2 -> NIVEL 1
+            elif self.index == 1:
+                self.index = 0
+    
+            # Desde VOLVER no hace nada.
+    
+        elif self.game.LEFT_KEY:
+            # NIVEL 2 -> NIVEL 1
+            if self.index == 1:
+                self.index = 0
+    
+            # NIVEL 1 -> NIVEL 2
+            elif self.index == 0:
+                self.index = 1
+    
+            # Desde VOLVER no hace nada.
+    
+        # =========================================================
+        # REGRESAR CON ESC
+        # =========================================================
+    
         if self.game.BACK_KEY:
             self.game.curr_menu = self.game.main_menu
             self.run_display = False
-
+            return
+    
+        # =========================================================
+        # SELECCIONAR CON ENTER
+        # =========================================================
+    
         if self.game.START_KEY:
             choice = self.options[self.index]
-
+    
             if choice == "VOLVER":
                 self.game.curr_menu = self.game.main_menu
                 self.run_display = False
-
+    
             elif choice == "NIVEL 1":
                 self.game.selected_level = 1
                 self.game.playing = True
                 self.run_display = False
-
+    
             elif choice == "NIVEL 2":
                 self.game.selected_level = 2
                 self.game.playing = True

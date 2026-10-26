@@ -210,7 +210,7 @@ class Game:
     def __init__(self):
         pygame.init()
         self.running, self.playing = True, False
-        pygame.display.set_caption("juego v1_v12")
+        pygame.display.set_caption("Interfaz Gamificada - Cambio Menú")
 
         # ===== VENTANA Y PANTALLA =====
         self.base_size = (480, 270)
@@ -605,7 +605,7 @@ class Game:
     BALLOON_POP_FRAME_DURATION = 0.1     # Segundos por cuadro de la animación de reventar
 
     HAND_OFFSET_TILES_Y = 8.5            # Altura de la mano respecto al globo (en tiles)
-    HAND_FRAME_DURATION = 0.10           # Segundos por cuadro de la animación de la mano
+    HAND_FRAME_DURATION = 0.15           # Segundos por cuadro de la animación de la mano
 
     BRIDGE_W_TILES = 10                  # Ancho del bloque de hielo (tiles)
     BRIDGE_H_TILES = 3                   # Alto del bloque de hielo (tiles)
