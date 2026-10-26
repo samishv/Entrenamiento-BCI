@@ -473,7 +473,7 @@ class ConfigMenu(Menu):
             preview_rect.size,
             pygame.SRCALPHA,
         )
-        preview_bg.fill((73, 103, 141, 255))
+        preview_bg.fill((73, 103, 141, 180))
     
         self.game.display.blit(
             preview_bg,

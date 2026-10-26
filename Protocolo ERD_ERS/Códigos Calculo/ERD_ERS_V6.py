@@ -26,12 +26,12 @@ from Procesamiento_Funciones import (
 
 plt.close("all")
 
-# CARPETA_DATOS = Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SK1" / "ME"
+CARPETA_DATOS = Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SV3" / "MI"
 
-CARPETA_DATOS = Path(
-    r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-    r"\SV3\MI"
-)
+#CARPETA_DATOS = Path(
+#    r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+#    r"\SV3\MI"
+#)
 
 PATRON_ARCHIVOS = "*.npy"
 CARPETA_RESULTADOS = CARPETA_DATOS.parent / "Resultados_ERD_ERS"

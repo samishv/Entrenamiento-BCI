@@ -32,8 +32,8 @@ import time
 
 from psychopy import prefs
 #prefs.hardware['audioDevice'] = 'Altavoces (2- Realtek(R) Audio)'#COMPU LIBS
-#prefs.hardware['audioDevice'] = 'Speaker / Headphone (Realtek(R) Audio)'#COMPU SAM 
-prefs.hardware['audioDevice'] = 'Altavoces (Realtek(R) Audio)' # COMPU LEO
+prefs.hardware['audioDevice'] = 'Speaker / Headphone (Realtek(R) Audio)'#COMPU SAM 
+#prefs.hardware['audioDevice'] = 'Altavoces (Realtek(R) Audio)' # COMPU LEO
 prefs.hardware['audioLib'] = ['ptb', 'sounddevice']   # antes de importar sound
 prefs.hardware['audioLatencyMode'] = 3
 from psychopy import visual, core, event, sound, gui
