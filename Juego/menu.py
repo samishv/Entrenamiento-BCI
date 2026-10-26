@@ -108,15 +108,17 @@ class ConfigMenu(Menu):
     HAND_PREVIEW_FRAME_MS = 150
     ARIADNE_PREVIEW_FRAME_MS = 300
     
-    # Margenes internos para escalar cada tipo de animacion.
-    COLOR_PREVIEW_MARGIN_X = 20
-    COLOR_PREVIEW_MARGIN_Y = 16
+    # =========================================================
+    # ESCALAS DE LAS ANIMACIONES
+    # =========================================================
+    #
+    # 1.0 = tamaño original
+    # 2.0 = doble del tamaño original
+    # 0.5 = mitad del tamaño original
     
-    HAND_PREVIEW_MARGIN_X = 20
-    HAND_PREVIEW_MARGIN_Y = 20
-    
-    ARIADNE_PREVIEW_MARGIN_X = 20
-    ARIADNE_PREVIEW_MARGIN_Y = 20
+    COLOR_PREVIEW_SCALE = 2.0
+    HAND_PREVIEW_SCALE = 1.0
+    ARIADNE_PREVIEW_SCALE = 1.0
     
     # Carpetas de las animaciones.
     HAND_RIGHT_PREVIEW_FOLDER = os.path.join(
@@ -366,11 +368,14 @@ class ConfigMenu(Menu):
             animation_key
             frames
             frame_duration_ms
-            margin_x
-            margin_y
+            preview_scale
     
-        animation_key permite detectar cuando cambia la animacion
-        y reiniciar su reproduccion desde el primer frame.
+        preview_scale controla directamente el tamaño de cada
+        tipo de animacion:
+    
+            1.0 = tamaño original
+            2.0 = doble del tamaño original
+            0.5 = mitad del tamaño original
         """
     
         # ---------------------------------------------------------
@@ -388,8 +393,7 @@ class ConfigMenu(Menu):
                 animation_key,
                 self.preview_idle_frames,
                 self.COLOR_PREVIEW_FRAME_MS,
-                self.COLOR_PREVIEW_MARGIN_X,
-                self.COLOR_PREVIEW_MARGIN_Y,
+                self.COLOR_PREVIEW_SCALE,
             )
     
         # ---------------------------------------------------------
@@ -407,8 +411,7 @@ class ConfigMenu(Menu):
                 animation_key,
                 frames,
                 self.HAND_PREVIEW_FRAME_MS,
-                self.HAND_PREVIEW_MARGIN_X,
-                self.HAND_PREVIEW_MARGIN_Y,
+                self.HAND_PREVIEW_SCALE,
             )
     
         # ---------------------------------------------------------
@@ -424,19 +427,19 @@ class ConfigMenu(Menu):
                 animation_key,
                 self.preview_ariadne_frames,
                 self.ARIADNE_PREVIEW_FRAME_MS,
-                self.ARIADNE_PREVIEW_MARGIN_X,
-                self.ARIADNE_PREVIEW_MARGIN_Y,
+                self.ARIADNE_PREVIEW_SCALE,
             )
     
-        # Respaldo: si el estado no fuera reconocido, muestra color.
+        # ---------------------------------------------------------
+        # RESPALDO
+        # ---------------------------------------------------------
         self._refresh_preview_frames()
     
         return (
             ("COLOR", self.game.player_color),
             self.preview_idle_frames,
             self.COLOR_PREVIEW_FRAME_MS,
-            self.COLOR_PREVIEW_MARGIN_X,
-            self.COLOR_PREVIEW_MARGIN_Y,
+            self.COLOR_PREVIEW_SCALE,
         )
 
     def _refresh_preview_frames(self):
@@ -489,8 +492,7 @@ class ConfigMenu(Menu):
             animation_key,
             frames,
             frame_duration_ms,
-            margin_x,
-            margin_y,
+            preview_scale,
         ) = self._get_current_preview_animation()
     
         # Si cambia la animacion, se reinicia desde el primer frame.
@@ -516,37 +518,33 @@ class ConfigMenu(Menu):
     
         frame = frames[frame_index]
     
-        # Area maxima disponible dentro de la tarjeta.
-        max_width = max(
-            1,
-            preview_rect.width - margin_x,
-        )
-    
-        max_height = max(
-            1,
-            preview_rect.height - margin_y,
-        )
-    
+        # Dimensiones originales del frame.
         frame_width = frame.get_width()
         frame_height = frame.get_height()
-    
+        
         if frame_width <= 0 or frame_height <= 0:
             return
-    
-        # Escala entera para mantener nitido el pixel art.
-        scale = max(
+        
+        # Evita escalas iguales o menores que cero.
+        preview_scale = max(0.01, preview_scale)
+        
+        # Calcula el nuevo tamaño usando la escala decimal.
+        scaled_width = max(
             1,
-            min(
-                max_width // frame_width,
-                max_height // frame_height,
-            ),
+            round(frame_width * preview_scale),
         )
-    
+        
+        scaled_height = max(
+            1,
+            round(frame_height * preview_scale),
+        )
+        
+        # Escala la imagen al tamaño calculado.
         preview_frame = pygame.transform.scale(
             frame,
             (
-                frame_width * scale,
-                frame_height * scale,
+                scaled_width,
+                scaled_height,
             ),
         )
     
