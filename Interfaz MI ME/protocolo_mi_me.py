@@ -29,10 +29,12 @@ import sys
 import subprocess
 from datetime import datetime
 import time
+import gc
 
 from psychopy import prefs
-#prefs.hardware['audioDevice'] = 'Altavoces (2- Realtek(R) Audio)'#COMPU LIBS
-prefs.hardware['audioDevice'] = 'Speaker / Headphone (Realtek(R) Audio)'#COMPU SAM 
+#prefs.hardware['audioDevice'] = 'Altavoces (2- Realtek(R) Audio)'#COMPU LIPS
+prefs.hardware['audioDevice'] = 'Altavoces (Realtek(R) Audio)'#COMPU LIPS
+#prefs.hardware['audioDevice'] = 'Speaker / Headphone (Realtek(R) Audio)'#COMPU SAM 
 #prefs.hardware['audioDevice'] = 'Altavoces (Realtek(R) Audio)' # COMPU LEO
 prefs.hardware['audioLib'] = ['ptb', 'sounddevice']   # antes de importar sound
 prefs.hardware['audioLatencyMode'] = 3
@@ -86,13 +88,16 @@ def secuencia_bloque(n, rng):
             return s
 
 def lanzar_visor_eeg(stream_name):
-    """Abre ventanaeeg.py como proceso independiente."""
     ruta = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ventanaeeg.py')
     if not os.path.exists(ruta):
         print(f"[AVISO] No se encontró {ruta}; no se abre el visor EEG")
         return None
     try:
-        return subprocess.Popen([sys.executable, ruta, stream_name])
+        flags = 0
+        if sys.platform == 'win32':
+            flags = subprocess.BELOW_NORMAL_PRIORITY_CLASS   # que no compita con PsychoPy
+        return subprocess.Popen([sys.executable, ruta, stream_name],
+                                creationflags=flags)
     except Exception as e:
         print(f"[AVISO] No se pudo abrir el visor EEG: {e}")
         return None
@@ -176,15 +181,23 @@ def main():
         outlet.push_sample([m], t)
         ultimo['t'] = t
 
-    # ── Ventana, estímulos, sonido ──────────────────────────────────────────
-    win = visual.Window(fullscr=not a.ventana, screen=a.pantalla, color='black',
-                        units='height', allowGUI=False)
-    fps = win.getActualFrameRate() or 60.0
-    win.recordFrameIntervals = True
-    win.refreshThreshold = 1.0 / fps * 1.2
-    nf = lambda s: int(round(s * fps))
-    print(f"[INFO] fps medidos: {fps:.2f} | seed: {seed}")
+    visor = None
+    if not a.sin_visor:
+        visor = lanzar_visor_eeg(a.eeg_stream)
+        time.sleep(5)      # deja que el visor termine de cargar (modelo, etc.)
 
+    # ── Ventana, estímulos, sonido ──────────────────────────────────────────
+        win = visual.Window(fullscr=not a.ventana, screen=a.pantalla, color='black',
+                        units='height', allowGUI=False)
+    # Calentamiento: estabiliza el vsync antes de medir
+    for _ in range(120):
+        win.flip()
+    fps = win.getActualFrameRate(nIdentical=20, nMaxFrames=240, nWarmUpFrames=20,
+                                 threshold=1) or 60.0
+    frame_dur = 1.0 / fps          # solo se usa como tolerancia, NO para las duraciones
+    win.recordFrameIntervals = True
+    win.refreshThreshold = frame_dur * 1.2
+    print(f"[INFO] fps medidos: {fps:.2f} | seed: {seed}")
     fix = visual.TextStim(win, text='+', height=0.15, color='white')
     cues = {}
     for c in ('MI', 'ME'):
@@ -195,18 +208,31 @@ def main():
                                   fillColor=COLORES[a.mapeo][c], lineColor=None)
     beep = sound.Sound(BEEP_HZ, secs=BEEP_S, stereo=True, hamming=True)
 
-    def fase(n_frames, dibujar, marcador, con_beep=False):
-        """Dibuja n_frames; marcador (y beep) salen en el primer flip."""
-        for i in range(n_frames):
+    prox = {'inicio': None}    # inicio nominal de la siguiente fase (reloj LSL)
+
+    def fase(dur_s, dibujar, marcador, con_beep=False):
+        """Fase de dur_s segundos. El marcador (y beep) salen en el primer flip.
+        El fin se calcula sobre un calendario absoluto: no se acumula error."""
+        primero = True
+        while True:
             dibujar()
-            if i == 0:
+            if primero:
                 win.callOnFlip(enviar, marcador)
                 if con_beep:
                     beep.play(when=win.getFutureFlipTime(clock='ptb'))
             win.flip()
             if event.getKeys(['escape']):
                 raise Abortar()
-        return ultimo['t']
+            if primero:
+                t0 = ultimo['t']                     # tiempo real del flip del marcador
+                inicio_nom = prox['inicio'] if prox['inicio'] is not None else t0
+                fin_nom = inicio_nom + dur_s
+                prox['inicio'] = fin_nom
+                primero = False
+            # ¿el siguiente flip caería antes del fin nominal (con media trama de tolerancia)?
+            if local_clock() + 0.5 * frame_dur >= fin_nom:
+                break
+        return t0
 
     def texto(msg, segundos=None):
         t = visual.TextStim(win, text=msg, height=0.04, color='white', wrapWidth=1.5)
@@ -215,7 +241,8 @@ def main():
             if 'escape' in event.waitKeys(keyList=['space', 'escape']):
                 raise Abortar()
         else:
-            for _ in range(nf(segundos)):
+            fin = local_clock() + segundos
+            while local_clock() < fin:
                 t.draw(); win.flip()
                 
     def pantalla_inicio(msg):
@@ -346,28 +373,23 @@ def main():
         if not eeg_ok:
             print("[!] EEG NO DETECTADO")
 
-        visor = None
-        if not a.sin_visor:
-            visor = lanzar_visor_eeg(a.eeg_stream)
-            time.sleep(3)
         pantalla_inicio(msg)
         win.winHandle.activate()
-        fase(nf(1.0), nada, 'block_start')
+
+        gc.collect(); gc.disable()          # sin pausas del recolector durante el bloque
+        core.rush(True)                     # prioridad alta para PsychoPy
+        prox['inicio'] = None               # el calendario arranca en block_start
+        fase(1.0, nada, 'block_start')
 
         for k, clase in enumerate(seq, 1):
             jitter = rng.uniform(JITTER_MIN_S, JITTER_MAX_S)
             d0 = win.nDroppedFrames
 
-            # Atención: cruz (jitter + fijación)
-            t_jit = fase(nf(jitter), fix.draw, 'jitter_start')
-            t_fix = fase(nf(FIJACION_S), fix.draw, 'fix_start')
-            # Tarea: cue + beep
-            t_cue = fase(nf(TAREA_S), cues[clase].draw, f'cue_{clase}', con_beep=True)
-            # Reposo: pantalla negra, fijo; marcador a los 3 s
-            n_r1 = nf(REPOSO_MARCA_S)
-            n_r2 = nf(REPOSO_S) - n_r1
-            t_rep = fase(n_r1, nada, 'reposo_start')
-            t_r3 = fase(n_r2, nada, 'reposo_3s')
+            t_jit = fase(jitter,        fix.draw,          'jitter_start')
+            t_fix = fase(FIJACION_S,    fix.draw,          'fix_start')
+            t_cue = fase(TAREA_S,       cues[clase].draw,  f'cue_{clase}', con_beep=True)
+            t_rep = fase(REPOSO_MARCA_S,           nada,   'reposo_start')
+            t_r3  = fase(REPOSO_S - REPOSO_MARCA_S, nada,  'reposo_3s')
 
             w.writerow([k, clase, a.mapeo, seed, f'{fps:.2f}',
                         f'{jitter:.3f}', FIJACION_S, TAREA_S, REPOSO_S,
@@ -378,7 +400,7 @@ def main():
                         win.nDroppedFrames - d0])
             f.flush()
 
-        fase(nf(0.5), nada, 'block_end')
+        fase(0.5, nada, 'block_end')
         msg_final = "Fin del bloque\n\nEspera al evaluador"
 
     except Abortar:
@@ -394,6 +416,8 @@ def main():
         finally:
             if visor is not None and visor.poll() is None:
                 visor.terminate()
+            core.rush(False)
+            gc.enable()
             win.close()
             core.quit()
 

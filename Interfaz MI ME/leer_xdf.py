@@ -34,12 +34,12 @@ import pyxdf
 MODO = 'procesar'        # 'procesar' = recortar .xdf | 'visualizar' = graficar .npy
 
 # --- Entrada (modo 'procesar') -----------------------------------------------
-RUTA_ARCHIVO_XDF = r"Protocolo ERD_ERS\Signals\SV3\*.xdf"
+RUTA_ARCHIVO_XDF = r"Protocolo ERD_ERS\Signals\SV2\*.xdf"
 RUTAS_XDF = [RUTA_ARCHIVO_XDF]   # lista de archivos .xdf o patrones glob (ej. r"...\SVX\*.xdf")
 # --- Salida de los trials .npy -----------------------------------------------
 # Se guardan en <RUTA_SIGNALS>\<CARPETA_SUJETO>\{ME, MI, CSV, NPZ}
 RUTA_SIGNALS = r"Protocolo ERD_ERS\Signals"
-CARPETA_SUJETO = 'SV3'           # SV1, SV2, SK1, ... = todos los .xdf van a ese sujeto
+CARPETA_SUJETO = 'SV2'           # SV1, SV2, SK1, ... = todos los .xdf van a ese sujeto
 GUARDAR_NPY = True               # guardar un .npy por trial
 
 # --- Salida de los .npz ------------------------------------------------------
@@ -48,7 +48,7 @@ CARPETA_SALIDA = os.path.join(RUTA_SIGNALS, CARPETA_SUJETO)
 # --- Tipo de recorte ---------------------------------------------------------
 TIPO_RECORTE = 'fix_a_reposo3'   # 'fix_a_reposo3' | 'jitter_a_reposo3' | 'jitter_a_jitter' | 'ventana_cue'
 DURACION_VENTANA = 11.0          # 'fix_a_reposo3': largo fijo en s (3 fijación + 5 tarea + 3 reposo)
-TOL_DURACION = 0.7               # 'fix_a_reposo3': se descarta el trial si (reposo_3s - fix_start)
+TOL_DURACION = 1               # 'fix_a_reposo3': se descarta el trial si (reposo_3s - fix_start)
                                  #                  difiere del nominal en más de esto (s)
 TMIN = -5.0                      # solo 'ventana_cue': inicio respecto al cue (s); solo sirve para
 TMAX = 5.0                       # cortar: en lo guardado el tiempo 0 es el inicio del recorte
