@@ -58,12 +58,12 @@ COLORES = {'A': {'MI': '#3A7BD5', 'ME': '#BE6E14'},
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGENES = {
     'MI': os.path.join(BASE_DIR, 'cerebro5.png'),
-    'ME': os.path.join(BASE_DIR, 'ME_R.png')
+    'ME': os.path.join(BASE_DIR, 'ME_L.png')
 }   
 
 TEXTO_INSTR = (
-    "1) Mira la cruz y evita moverte.\n\n"
-    "2) Al escuchar el beep, realiza la tarea según la imagen.\n\n"
+    "1) Mira la cruz.\n\n"
+    "2) Al escuchar el beep, realiza la tarea hasta que desaparezca la imagen.\n\n"
     "3) Durante la pantalla negra, descansa.\n\n"
 )
 
@@ -142,10 +142,10 @@ def menu_inicio(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--pid', default='X')
-    ap.add_argument('--sesion', default='D1')
-    ap.add_argument('--bloque', default='B1')
-    ap.add_argument('--pantalla', type=int, default=0, help='monitor del sujeto')
+    ap.add_argument('--pid', default='S')
+    ap.add_argument('--sesion', default='D')
+    ap.add_argument('--bloque', default='B')
+    ap.add_argument('--pantalla', type=int, default=1, help='monitor del sujeto')
     ap.add_argument('--mapeo', choices=['A', 'B'], default='A')
     ap.add_argument('--n_por_clase', type=int, default=N_POR_CLASE)
     ap.add_argument('--eeg_stream', default='streamTEST')
