@@ -38,6 +38,18 @@ DEFAULT_LEVEL_TIME_LIMIT = 2        # Tiempo para los niveles que no estén en L
 
 # ===== COLORES DEL JUGADOR =====
 PLAYER_COLOR_PALETTES = {
+    "ORIGINAL": (
+        (177, 212, 128),  # #B1D480
+        (128, 184, 120),  # #80B878
+        (101, 141, 120),  # #658D78
+    ),
+    
+    "MENTA": (
+        (181, 244, 187), 
+        (173, 235, 179), 
+        (159, 220, 165),   
+    ),
+    
     "VERDE": (
         (44, 202, 97),
         (21, 191, 87),  
@@ -144,12 +156,6 @@ PLAYER_COLOR_PALETTES = {
         (201, 255, 118), 
         (173, 255, 47),  
         (157, 239, 21),   
-    ),
-    
-    "MENTA": (
-        (181, 244, 187), 
-        (173, 235, 179), 
-        (159, 220, 165),   
     ),
 
 }
