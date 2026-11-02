@@ -161,10 +161,10 @@ PLAYER_COLOR_PALETTES = {
 }
 
 # ===== FONDO PARALLAX =====
-PARALLAX_LAYER_SPEEDS = [0.25, 0.50, 0.85]   # Factor de velocidad de cada capa móvil
+PARALLAX_LAYER_SPEEDS = [0.05, 0.25, 0.50, 0.75]   # Factor de velocidad de cada capa móvil (01 a 04)
 PARALLAX_BASE_SPEED = 20.0                   # Velocidad base del fondo (px/s)
-PARALLAX_ACCEL = 14.0                        # Aceleración al arrancar
-PARALLAX_DECEL = 14.0                        # Desaceleración al detenerse
+PARALLAX_ACCEL = 50.0                        # Aceleración al arrancar
+PARALLAX_DECEL = 50.0                       # Desaceleración al detenerse
 
 # ===== FADES (HUD / PANTALLA FINAL / MENSAJES), en segundos =====
 FADE_HEARTS_IN_DURATION = 0.5
@@ -579,12 +579,20 @@ class Game:
     def _load_parallax_background(self, folder_path: str):
         self.bg_folder = folder_path
         bg_layers = []
+    
         for i in range(1, 5):
-            img = pygame.image.load(os.path.join(folder_path, f"{i:02d}.png")).convert_alpha()
-            bg_layers.append(pygame.transform.scale(img, self.base_size))
-
-        self.bg_static = bg_layers[0]
-        self.bg_moving = bg_layers[1:]
+            img = pygame.image.load(
+                os.path.join(folder_path, f"{i:02d}.png")
+            ).convert_alpha()
+    
+            bg_layers.append(
+                pygame.transform.scale(img, self.base_size)
+            )
+    
+        # Ahora las cuatro capas son móviles
+        self.bg_moving = bg_layers
+    
+        # Se crea un desplazamiento independiente para cada capa
         self.bg_offsets = [0.0] * len(self.bg_moving)
 
     def _update_parallax(self, dt, speed_px_s):
@@ -595,10 +603,10 @@ class Game:
             self.bg_offsets[i] = (self.bg_offsets[i] + base * PARALLAX_LAYER_SPEEDS[i]) % layer.get_width()
 
     def _draw_parallax(self):
-        self.display.blit(self.bg_static, (0, 0))
         for i, layer in enumerate(self.bg_moving):
             w = layer.get_width()
             x = -self.bg_offsets[i]
+    
             while x < self.base_size[0]:
                 self.display.blit(layer, (int(x), 0))
                 x += w
