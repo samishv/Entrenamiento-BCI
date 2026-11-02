@@ -21,7 +21,7 @@ from menu import MainMenu, ConfigMenu, LevelsMenu
 # ===== JUGABILIDAD =====
 AUTO_SPEED = 2                      # Velocidad del autorun (px por frame) ERA 2
 FAIL_RETURN_SPEED = 1.2             # Velocidad del autorun mientras el jugador se recupera de un fallo ERA 1.2
-TOTAL_CHALLENGES = 10               # Cantidad de desafíos (globos) por nivel
+TOTAL_CHALLENGES = 3               # Cantidad de desafíos (globos) por nivel
 FIRST_STOP_TILE = 38                # Tile donde se detiene el jugador en el primer desafío
 CHALLENGE_SPACING_TILES = 60        # Distancia (en tiles) entre un desafío y el siguiente
 MAX_PRESSES = 1                     # Pulsaciones necesarias para reventar un globo
@@ -38,126 +38,26 @@ DEFAULT_LEVEL_TIME_LIMIT = 2        # Tiempo para los niveles que no estén en L
 
 # ===== COLORES DEL JUGADOR =====
 PLAYER_COLOR_PALETTES = {
-    "ORIGINAL": (
-        (177, 212, 128),  # #B1D480
-        (128, 184, 120),  # #80B878
-        (101, 141, 120),  # #658D78
-    ),
-    
-    "MENTA": (
-        (181, 244, 187), 
-        (173, 235, 179), 
-        (159, 220, 165),   
-    ),
-    
-    "VERDE": (
-        (44, 202, 97),
-        (21, 191, 87),  
-        (0, 179, 79), 
-    ),
-
-    "TURQUESA": (
-        (88, 222, 217), 
-        (72, 209, 204),  
-        (55, 196, 192), 
-    ),
-    
-    "CELESTE": (
-        (150, 228, 255),   
-        (144, 220, 247), 
-        (138, 212, 238), 
-    ),
-
-    "AZUL": (
-        (75, 153, 255),  
-        (30, 144, 255),   
-        (0, 135, 243),   
-    ),
-
-    "INDIGO": (
-        (95, 107, 243),  
-        (85, 100, 235),   
-        (75, 93, 227),  
-    ),
-
-    "MORADO": (
-        (148, 100, 255), 
-        (139, 92, 246), 
-        (130, 84, 237),  
-    ),
-    
-    "CAFE": (
-        (153, 106, 100),  
-        (145, 99, 93),   
-        (137, 92, 86),   
-    ),
-    
-    "NEGRO": (
-        (39, 39, 39),   
-        (31, 31, 31),  
-        (25, 25, 25), 
-    ),
-    
-    "GRIS": (
-        (188, 195, 197),  
-        (176, 183, 185), 
-        (164, 171, 173),   
-    ),
-    
-    "BLANCO": (
-        (248, 248, 255),
-        (240, 240, 248), 
-        (232, 232, 240),
-    ),
-    
-    "BEIGE": (
-        (255, 255, 240),
-        (253, 245, 230),
-        (243, 235, 220),
-    ),
-
-    "GUINDA": (
-        (112, 43, 75),
-        (104, 36, 68), 
-        (96, 29, 61),  
-    ),
-
-    "ROJO": (
-        (204, 29, 85),
-        (195, 11, 78),  
-        (184, 0, 72),   
-    ),
-    
-    "ROSA": (
-        (255, 194, 221),  
-        (255, 174, 212), 
-        (241, 161, 199),   
-    ),
-
-    "SALMON": (
-        (243, 161, 150),  
-        (231, 150, 139), 
-        (219, 139, 128),    
-    ),
-
-    "NARANJA": (
-        (255, 182, 87), 
-        (255, 165, 0),    
-        (239, 154, 0), 
-    ),
-
-    "AMARILLO": (
-        (255, 255, 0),  
-        (245, 245, 0), 
-        (235, 235, 0),  
-    ),
-
-    "LIMA": (
-        (201, 255, 118), 
-        (173, 255, 47),  
-        (157, 239, 21),   
-    ),
-
+    "ORIGINAL": ((177, 212, 128), (128, 184, 120), (101, 141, 120)),
+    "MENTA":    ((181, 244, 187), (173, 235, 179), (159, 220, 165)),
+    "VERDE":    ((44,  202, 97),  (21,  191, 87),  (0,   179, 79)),
+    "TURQUESA": ((88,  222, 217), (72,  209, 204), (55,  196, 192)),
+    "CELESTE":  ((150, 228, 255), (144, 220, 247), (138, 212, 238)),
+    "AZUL":     ((75,  153, 255), (30,  144, 255), (0,   135, 243)),
+    "INDIGO":   ((95,  107, 243), (85,  100, 235), (75,  93,  227)),
+    "MORADO":   ((148, 100, 255), (139, 92,  246), (130, 84,  237)),
+    "CAFE":     ((153, 106, 100), (145, 99,  93),  (137, 92,  86)),
+    "NEGRO":    ((39,  39,  39),  (31,  31,  31),  (25,  25,  25)),
+    "GRIS":     ((188, 195, 197), (176, 183, 185), (164, 171, 173)),
+    "BLANCO":   ((248, 248, 255), (240, 240, 248), (232, 232, 240)),
+    "BEIGE":    ((255, 255, 240), (253, 245, 230), (243, 235, 220)),
+    "GUINDA":   ((112, 43,  75),  (104, 36,  68),  (96,  29,  61)),
+    "ROJO":     ((204, 29,  85),  (195, 11,  78),  (184, 0,   72)),
+    "ROSA":     ((255, 194, 221), (255, 174, 212), (241, 161, 199)),
+    "SALMON":   ((243, 161, 150), (231, 150, 139), (219, 139, 128)),
+    "NARANJA":  ((255, 182, 87),  (255, 165, 0),   (239, 154, 0)),
+    "AMARILLO": ((255, 255, 0),   (245, 245, 0),   (235, 235, 0)),
+    "LIMA":     ((201, 255, 118), (173, 255, 47),  (157, 239, 21)),
 }
 
 # ===== FONDO PARALLAX =====
@@ -259,7 +159,6 @@ class Game:
             "jump": load_images("entities/player/dive"),
         }
 
-        # "ice" y "water" los carga apply_level_theme() al iniciar cada nivel.
         self.assets = {
             "hand": load_images(self._get_hand_folder()),
             "heart": load_images("entities/heart"),
@@ -445,11 +344,11 @@ class Game:
             self.ble_thread = threading.Thread(target=self._ble_thread_runner, daemon=True)
             self.ble_thread.start()
         if not self.bluetooth_enabled:
-            self.stop_ble()  # si se deshabilitó, aseguramos detener cualquier conexión activa
+            self.stop_ble()  
 
     def stop_ble(self):
         """Llamar al salir del nivel o al togglear OFF desde el menú."""
-        self.ble_client = None  # la corutina detecta esto y sale
+        self.ble_client = None 
 
     def send_vibration(self, intensity: int, delay_ms: int):
         """Usar esto desde cualquier parte del juego."""
@@ -484,28 +383,22 @@ class Game:
     # =========================================================================
     # JUGADOR: COLOR Y MODO DE MANO
     # =========================================================================
-    # Tonos verdes de los sprites originales; son los que se sustituyen por la paleta elegida.
     ORIGINAL_PLAYER_PALETTE = (
-        (177, 212, 128),  # #B1D480
-        (128, 184, 120),  # #80B878
-        (101, 141, 120),  # #658D78
+        (177, 212, 128), 
+        (128, 184, 120), 
+        (101, 141, 120), 
     )
-    # Animaciones recoloreables: (clave en original_player_images, duración por cuadro)
+
     PLAYER_ANIMATIONS = (("run", 5), ("idle", 16), ("jump", 5))
 
     def _recolor_player_image(self, original_image, color_name):
         """Copia la imagen sustituyendo los tres tonos verdes originales por los de la paleta."""
         recolored_image = original_image.copy()
         target_palette = PLAYER_COLOR_PALETTES[color_name]
-
         pixel_array = pygame.PixelArray(recolored_image)
         for original_color, target_color in zip(self.ORIGINAL_PLAYER_PALETTE, target_palette):
-            pixel_array.replace(
-                recolored_image.map_rgb(original_color),
-                recolored_image.map_rgb(target_color)
-            )
+            pixel_array.replace(recolored_image.map_rgb(original_color),recolored_image.map_rgb(target_color))
         pixel_array.close()
-
         return recolored_image
 
     def _recolor_player_images(self, original_images, color_name):
@@ -550,8 +443,6 @@ class Game:
         self.hand_mode = mode
         self.assets["hand"] = load_images(self._get_hand_folder())
         self.hand_frames = self.assets["hand"]
-
-        # Reiniciar la animación de la mano.
         self.hand_frame_idx = 0
         self.hand_timer = 0.0
 
@@ -581,18 +472,10 @@ class Game:
         bg_layers = []
     
         for i in range(1, 5):
-            img = pygame.image.load(
-                os.path.join(folder_path, f"{i:02d}.png")
-            ).convert_alpha()
+            img = pygame.image.load(os.path.join(folder_path, f"{i:02d}.png")).convert_alpha()
+            bg_layers.append(pygame.transform.scale(img, self.base_size))
     
-            bg_layers.append(
-                pygame.transform.scale(img, self.base_size)
-            )
-    
-        # Ahora las cuatro capas son móviles
         self.bg_moving = bg_layers
-    
-        # Se crea un desplazamiento independiente para cada capa
         self.bg_offsets = [0.0] * len(self.bg_moving)
 
     def _update_parallax(self, dt, speed_px_s):
@@ -708,7 +591,6 @@ class Game:
     def reset_level(self, level_id: int):
         self.apply_level_theme(level_id)
         
-        # GUARDADO DE DATOS
         self.result_saved = False
         self.balloons_broken = 0
 
@@ -779,7 +661,6 @@ class Game:
 
     def run(self):
         self.start_ble_if_needed()
-        # === ROUTER DE NIVELES (cualquier nivel distinto de 2 usa el nivel 1) ===
         self.reset_level(2 if self.selected_level == 2 else 1)
         self._game_loop()
 
@@ -997,14 +878,12 @@ class Game:
             player_right_now = self.player.pos[0] + self.player.size[0]
             player_right_next = player_right_now + move_x
 
-            # Llegó a la parada del desafío actual: se detiene y espera la pulsación.
             if player_right_now < self.stop_x_px <= player_right_next:
                 move_x = self.stop_x_px - player_right_now
 
                 cur = self.current_challenge()
                 if cur:
                     cur["press_count"] = 0
-                    # Activar la mano en WAITING
                     self.hand_active = True
                     self.hand_timer = 0.0
                     self.hand_frame_idx = 0
@@ -1148,7 +1027,6 @@ class Game:
             if ch["bridge_world_y"] < target_top_y_px:
                 continue
 
-            # El bloque aterriza: se convierte en tiles de hielo sólidos del tilemap.
             ch["bridge_world_y"] = target_top_y_px
             ch["bridge_state"] = "LANDED"
             ch["bridge_done"] = True
@@ -1172,7 +1050,6 @@ class Game:
 
     # ----- Fades y mensajes -----
     def _update_fades(self, show_end, frame_dt):
-        # Al entrar a la pantalla final: corazones se desvanecen y aparecen los títulos.
         if show_end and not self.prev_show_end:
             self.hearts_fading_out = True
             self.hearts_fading_in = False
@@ -1225,8 +1102,15 @@ class Game:
                 self.msg_interval_index += 1
 
     # ----- HUD y pantalla final -----
-    HUD_MARGIN = 8                       # Margen del HUD respecto a los bordes (px)
-    HUD_CLOCK_PADDING = 8                # Separación entre el gamer tag y el reloj (px)
+    HUD_MARGIN = 8
+    HUD_CLOCK_PADDING = 8
+    
+    # ===== PANEL DE MENSAJES DE PROGRESO =====
+    PROGRESS_PANEL_COLOR = (0, 0, 0)       # Color negro
+    PROGRESS_PANEL_ALPHA = 100             # Transparencia: 0 invisible, 255 opaco
+    PROGRESS_PANEL_RADIUS = 8              # Redondeado de las esquinas
+    PROGRESS_PANEL_PADDING_X = 10          # Espacio horizontal entre texto y borde
+    PROGRESS_PANEL_PADDING_Y = 8           # Espacio vertical entre texto y borde
 
     def _draw_hud(self, show_end):
         margin = self.HUD_MARGIN
@@ -1261,26 +1145,67 @@ class Game:
     def _draw_progress_messages(self, show_end):
         if not (self.state == self.RUNNING and self.msg_alpha > 0 and not show_end):
             return
-
+    
+        # =============================================================
+        # TEXTOS DEL MENSAJE
+        # =============================================================
         remaining = max(0, TOTAL_CHALLENGES - self.stop_index)
+    
         texts = ("GLOBOS RESTANTES", str(remaining), "PUNTUACION", str(self.score))
+    
         s1_label, s1_val, s2_label, s2_val = [
-            self.render_bitmap_text_surface(t, self.bitmap_font, spacing=self.bitmap_spacing) for t in texts
+            self.render_bitmap_text_surface(text, self.bitmap_font_white, spacing=self.bitmap_spacing)
+            for text in texts
         ]
-        for s in (s1_label, s1_val, s2_label, s2_val):
-            s.set_alpha(int(self.msg_alpha))
-
+    
+        # =============================================================
+        # POSICIONES DE LOS TEXTOS
+        # =============================================================
         cx = self.base_size[0] // 2
         cy = self.base_size[1] // 4
         y_gap = 6
-
+    
         x_label = cx - 144
-        x1_val = cx + 144
-        x2_val = cx + 144 if self.score == 0 else cx + 128
-
+        x1_val  = cx + 144
+        x2_val  = cx + 144 if self.score == 0 else cx + 128
+    
         y1 = cy - s1_label.get_height() - y_gap
         y2 = cy + y_gap
-
+    
+        # =============================================================
+        # RECTÁNGULO QUE ABARCA TODOS LOS TEXTOS
+        # =============================================================
+        text_rects = [
+            s1_label.get_rect(topleft=(x_label, y1)),
+            s1_val.get_rect(topleft=(x1_val, y1)),
+            s2_label.get_rect(topleft=(x_label, y2)),
+            s2_val.get_rect(topleft=(x2_val, y2)),
+        ]
+    
+        panel_rect = text_rects[0].unionall(text_rects[1:])
+        panel_rect.inflate_ip(self.PROGRESS_PANEL_PADDING_X * 2, self.PROGRESS_PANEL_PADDING_Y * 2)
+    
+        panel_surface = pygame.Surface(panel_rect.size, pygame.SRCALPHA)
+        panel_alpha = int(self.PROGRESS_PANEL_ALPHA * (self.msg_alpha / 255.0))
+    
+        pygame.draw.rect(
+            panel_surface,
+            (self.PROGRESS_PANEL_COLOR[0], self.PROGRESS_PANEL_COLOR[1], self.PROGRESS_PANEL_COLOR[2], panel_alpha),
+            panel_surface.get_rect(),
+            border_radius=self.PROGRESS_PANEL_RADIUS
+        )
+    
+        self.display.blit(panel_surface, panel_rect.topleft)
+    
+        # =============================================================
+        # FADE DE LAS LETRAS
+        # =============================================================
+        for surface in (s1_label, s1_val, s2_label, s2_val):
+            surface.set_alpha(int(self.msg_alpha))
+    
+        # =============================================================
+        # DIBUJADO DE LOS TEXTOS
+        # =============================================================
         self.display.blit(s1_label, (x_label, y1))
         self.display.blit(s1_val, (x1_val, y1))
         self.display.blit(s2_label, (x_label, y2))
@@ -1291,7 +1216,7 @@ class Game:
         end_alpha = int(self.end_title_alpha)
         completed = sum(1 for ch in self.challenges if ch["scored"])
 
-        # Textos normales (1x)
+        # --- Textos normales (1x)
         render = self.render_bitmap_text_surface
         s_gr = render("GLOBOS ROTOS", self.bitmap_font, spacing=self.bitmap_spacing)
         s_completed = render(str(completed), self.bitmap_font, spacing=self.bitmap_spacing)
@@ -1306,7 +1231,7 @@ class Game:
         self.display.blit(s_pts, (11 * 16, 12 * 16))
         self.display.blit(s_score, (25 * 16, 12 * 16))
 
-        # Títulos grandes
+        # --- Títulos grandes
         if self.state == self.WIN:
             t1 = render("NIVEL", self.bitmap_font_big, spacing=self.bitmap_spacing_big)
             t2 = render("COMPLETADO", self.bitmap_font_mid, spacing=self.bitmap_spacing_mid)

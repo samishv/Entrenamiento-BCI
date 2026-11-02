@@ -11,6 +11,16 @@ from scipy.signal import iirnotch, sosfiltfilt, tf2sos, butter, resample_poly
 # %% CARGAR DATOS EEG
 
 def cargar_npy_eeg(ruta_npy: str, n_canales_esperados: int | None = None) -> np.ndarray:
+    """
+    Carga señales EEG desde un archivo .npy.
+    
+    Entradas:
+        ruta_npy (str): ruta del archivo.
+        n_canales_esperados (int): número esperado de canales.
+    
+    Retorna:
+        ndarray (canales, muestras)
+    """
     datos = np.load(ruta_npy)
     if datos.ndim != 2:
         raise ValueError(f"Se esperaba un arreglo 2D (canales x muestras). Recibido: {datos.shape}")
@@ -28,29 +38,33 @@ def cargar_npy_emg(
     n_canales_esperados: int | None = None,
     permitir_transponer: bool = True,
 ) -> np.ndarray:
+    """
+    Carga señales EMG desde un archivo .npy.
 
+    Entradas:
+        ruta_npy (str)
+        n_canales_esperados (int)
+        permitir_transponer (bool)
+
+    Retorna:
+        ndarray (canales, muestras)
+    """
     datos = np.load(ruta_npy)
 
     if datos.ndim == 1:
         datos = datos.reshape(1, -1)
     elif datos.ndim != 2:
         raise ValueError(f"Se esperaba 1D o 2D para EMG. Recibido: {datos.shape}")
-
-    # Si especificas canales esperados, usamos eso para decidir transposición
     if permitir_transponer and n_canales_esperados is not None:
         if datos.shape[0] != n_canales_esperados and datos.shape[1] == n_canales_esperados:
             datos = datos.T
-
-    # Si no especificas canales esperados, heurística: usualmente muestras >> canales
     if permitir_transponer and n_canales_esperados is None:
         if datos.shape[0] > datos.shape[1]:
             datos = datos.T
-
     if n_canales_esperados is not None and datos.shape[0] != n_canales_esperados:
         raise ValueError(
             f"Se esperaban {n_canales_esperados} canales EMG, pero el archivo trae {datos.shape[0]}: {datos.shape}"
         )
-
     return np.asarray(datos, dtype=float)
 
 
@@ -60,9 +74,16 @@ def cargar_npy_dinam(
     ruta_npy: str,
     permitir_multicanal: bool = False,
 ) -> np.ndarray:
+    """
+    Carga una señal de dinamómetro.
 
+    Entradas:
+        ruta_npy (str)
+
+    Retorna:
+        ndarray (muestras,)
+    """
     datos = np.load(ruta_npy)
-
     if datos.ndim == 1:
         vec = datos
     elif datos.ndim == 2:
@@ -70,13 +91,10 @@ def cargar_npy_dinam(
             vec = datos.reshape(-1)
         else:
             if not permitir_multicanal:
-                raise ValueError(
-                    f"DINAM debe ser 1D (o 2D con una dimensión = 1). Recibido: {datos.shape}"
-                )
+                raise ValueError(f"DINAM debe ser 1D (o 2D con una dimensión = 1). Recibido: {datos.shape}")
             vec = datos[0].reshape(-1)
     else:
         raise ValueError(f"DINAM debe ser 1D o 2D. Recibido: {datos.shape}")
-
     return np.asarray(vec, dtype=float)
 
 
@@ -97,6 +115,18 @@ def aplicar_notch_multiple(
     Q: float = 30.0,
     pad: int = 0,
 ) -> np.ndarray:
+    """
+    Elimina ruido de red eléctrica usando filtros Notch.
+
+    Entradas:
+        datos (ndarray): (canales, muestras)
+        fs (float): frecuencia de muestreo
+        freqs (list): frecuencias a eliminar
+        Q (float): factor de calidad
+
+    Retorna:
+        ndarray filtrado
+    """
     salida = np.asarray(datos, dtype=float).copy()
 
     for f0 in freqs:
