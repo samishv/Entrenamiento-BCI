@@ -26,7 +26,7 @@ from Procesamiento_Funciones import (
 
 plt.close("all")
 
-CARPETA_DATOS = Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SV2" / "ME"
+CARPETA_DATOS = Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SV2" / "MI"
 
 #CARPETA_DATOS = Path(
 #    r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
