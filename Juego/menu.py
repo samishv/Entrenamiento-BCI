@@ -1,5 +1,18 @@
-import pygame
 import os
+import sys
+import pygame
+
+ENTORNO = "spyder"   # "vscode" | "spyder"
+
+if ENTORNO == "vscode":
+    try:
+        _CARPETA_JUEGO = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        _CARPETA_JUEGO = os.path.abspath(os.path.join(os.getcwd(), "Juego"))
+    os.chdir(_CARPETA_JUEGO)            
+    if _CARPETA_JUEGO not in sys.path:      
+        sys.path.insert(0, _CARPETA_JUEGO)
+        
 
 class Menu:
     def __init__(self, game):
@@ -93,7 +106,7 @@ class MainMenu(Menu):
     CARDS_Y = 85
     CARD_WIDTH = 130
     CARD_HEIGHT = 130
-    CARD_BACKGROUND_COLOR = (40, 80, 115)
+    CARD_BACKGROUND_COLOR = (50, 90, 120)
     CARD_BORDER_COLOR = (255, 255, 255)
     CARD_BORDER_WIDTH = 2
 
@@ -564,8 +577,8 @@ class LevelsMenu(Menu):
     BACK_TEXT_SCALE = 0.7
     BACK_Y = 250
     CARD_BORDER_WIDTH = 2
-    LEVEL_1_BASE_COLOR = (75, 100, 135)
-    LEVEL_2_BASE_COLOR = (75, 100, 135)
+    LEVEL_1_BASE_COLOR = (50, 90, 120)
+    LEVEL_2_BASE_COLOR = (50, 90, 120)
 
     def __init__(self, game):
         super().__init__(game)

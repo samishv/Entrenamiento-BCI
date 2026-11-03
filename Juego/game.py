@@ -1,4 +1,5 @@
 import os
+import sys
 import csv
 import pygame
 import asyncio
@@ -11,11 +12,37 @@ from scripts.entities import Player
 from scripts.tilemap import Tilemap
 from menu import MainMenu, ConfigMenu, LevelsMenu
 
+# =============================================================================
+# CONFIGURACIÓN EXTERNA MODIFICABLE
+# =============================================================================
+
+ENTORNO = "spyder"   # "vscode" | "spyder"
+MONITOR = 0
+
+if ENTORNO == "vscode":
+    try:
+        _CARPETA_JUEGO = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        _CARPETA_JUEGO = os.path.abspath(os.path.join(os.getcwd(), "Juego"))
+    os.chdir(_CARPETA_JUEGO)             
+    if _CARPETA_JUEGO not in sys.path:       
+        sys.path.insert(0, _CARPETA_JUEGO)
+
+if sys.platform == "win32":
+    try:
+        import ctypes
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)  
+        except Exception:
+            ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
+os.environ.pop("SDL_VIDEO_WINDOW_POS", None)
+os.environ.pop("SDL_VIDEO_CENTERED", None)
 
 # =============================================================================
-# CONFIGURACIÓN MODIFICABLE
-# Valores que se pueden ajustar para cambiar el comportamiento del juego sin
-# tocar el resto del código.
+# CONFIGURACIÓN INTERNA MODIFICABLE
 # =============================================================================
 
 # ===== JUGABILIDAD =====
@@ -124,7 +151,11 @@ class Game:
 
         self.window_size = (1280, 720)
         self.fullscreen = False
-        self.screen = pygame.display.set_mode(self.window_size)
+        n_monitores = pygame.display.get_num_displays()
+        self.monitor = MONITOR if 0 <= MONITOR < n_monitores else 0
+        if self.monitor != MONITOR:
+            print(f"[pantalla] MONITOR={MONITOR} no existe ({n_monitores} detectado(s)); se usa el 0")
+        self.screen = pygame.display.set_mode(self.window_size, pygame.SCALED, display=self.monitor)
 
         # ===== FONDO DEL MENÚ =====
         menu_bg_path = os.path.join("data", "images", "background", "menu_b", "1.png")
@@ -217,11 +248,14 @@ class Game:
         self.blit_offset = ((sw - dw) // 2, (sh - dh) // 2)
 
     def _toggle_fullscreen(self):
+        # Con pygame.SCALED, toggle_fullscreen cambia el modo SIN recrear la
+        # ventana ni cambiar la resolucion del monitor (pantalla completa a
+        # tamano de escritorio): no mueve otras ventanas y no pierde el foco.
+        # El juego sigue dibujando sobre "screen" de window_size y SDL lo
+        # escala con barras negras.
+        pygame.display.toggle_fullscreen()
         self.fullscreen = not self.fullscreen
-        if self.fullscreen:
-            self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-        else:
-            self.screen = pygame.display.set_mode(self.window_size)
+        self.screen = pygame.display.get_surface()
         self._recalc_scaling()
 
     def _present_frame(self):
