@@ -28,12 +28,12 @@ from Procesamiento_Funciones import (
 
 plt.close("all")
 
-CARPETA_DATOS = Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SV2" / "MI"
+# CARPETA_DATOS = Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SV2" / "MI"
 
-#CARPETA_DATOS = Path(
-#   r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-#   r"\SV3\MI"
-#)
+CARPETA_DATOS = Path(
+  r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+  r"\SK2\ME"
+)
 
 PATRON_ARCHIVOS = "*.npy"
 LATERALIDAD = "zurdo"  # Opciones: "diestro" o "zurdo"
@@ -89,8 +89,8 @@ ELIMINAR_DC = True
 FREQS_NOTCH = (60.0, 120.0)
 Q_NOTCH = 5.0
 
-F_LOW = 5.0
-F_HIGH = 45.0
+F_LOW = 7.0
+F_HIGH = 31.0
 BP_ORDER = 3
 
 PAD_MUESTRAS = int(5 * FS)                                  # padding reflejado (5 segundos)
@@ -151,8 +151,8 @@ MOSTRAR_FIGURAS = False
 MAXIMIZAR_FIGURAS = True
 
 ESTILO_OSCURO = True
-FIG_SIZE = (20, 12)
-FIG_DPI = 150
+FIG_SIZE = (16, 9)
+FIG_DPI = 120
 FIG_FORMATO = "png"
 
 COLORES_CANALES = {
