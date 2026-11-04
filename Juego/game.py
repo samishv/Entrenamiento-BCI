@@ -16,8 +16,8 @@ from menu import MainMenu, ConfigMenu, LevelsMenu
 # CONFIGURACIÓN EXTERNA MODIFICABLE
 # =============================================================================
 
-ENTORNO = "spyder"   # "vscode" | "spyder"
-MONITOR = 0
+ENTORNO = "vscode"   # "vscode" | "spyder"
+MONITOR = 1
 
 if ENTORNO == "vscode":
     try:

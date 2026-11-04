@@ -1,4 +1,4 @@
---- S18 SK1 MEASURES ---
+--- S18 (SK1) MEASURES ---
 
 	EMG
 
@@ -11,7 +11,7 @@
 		1. 38 NAS-INI -- 19
 
 
---- S17 SV1 MEASURES ---
+--- S17 (SV1) MEASURES ---
 
 	EMG
 
@@ -24,7 +24,7 @@
 		1. 40 NAS-INI -- 20
 
 
---- S7 MEASURES ---
+--- S7 (SV3) MEASURES ---
 
 	EMG
 
@@ -36,7 +36,7 @@
 
 		1. 36 NAS-INI -- 18
 
---- S5 MEASURES ---
+--- S5 (SK3) MEASURES ---
 
 	EMG
 
@@ -48,7 +48,7 @@
 
 		1. 37 NAS-INI -- 18.5
 
---- S6 MEASURES ---
+--- S6 (SV2 OLD) MEASURES ---
 
 	EMG
 
@@ -60,8 +60,14 @@
 
 		1. 37 NAS-INI -- 18.5
 
---- SV2 MEASURES ---
-A
+--- ALD (SV2 NEW) MEASURES---
+
+	EEG
+
+		1. 38 NAS-INI -- 19 
+
+--- DAN (SK2) MEASURES---
+
 	EEG
 
 		1. 38 NAS-INI -- 19 

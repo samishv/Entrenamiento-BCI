@@ -2,7 +2,7 @@ import os
 import sys
 import pygame
 
-ENTORNO = "spyder"   # "vscode" | "spyder"
+ENTORNO = "vscode"   # "vscode" | "spyder"
 
 if ENTORNO == "vscode":
     try:

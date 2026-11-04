@@ -232,7 +232,7 @@ def main():
         return t0
 
     def texto(msg, segundos=None):
-        t = visual.TextStim(win, text=msg, height=0.04, color='white', wrapWidth=1.5)
+        t = visual.TextStim(win, text=msg, height=0.04, color="white", wrapWidth=1.5)
         if segundos is None:
             t.draw(); win.flip()
             if 'escape' in event.waitKeys(keyList=['space', 'escape']):
