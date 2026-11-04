@@ -28,15 +28,15 @@ from Procesamiento_Funciones import (
 
 plt.close("all")
 
-# CARPETA_DATOS = Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SV2" / "MI"
+CARPETA_DATOS = Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SV2" / "ME"
 
-CARPETA_DATOS = Path(
-  r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-  r"\SV3\MI"
-)
+#CARPETA_DATOS = Path(
+#  r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+#  r"\SK2\MI"
+#)
 
 PATRON_ARCHIVOS = "*.npy"
-LATERALIDAD = "diestro"  # Opciones: "diestro" o "zurdo"
+LATERALIDAD = "zurdo"  # Opciones: "diestro" o "zurdo"
 SEMILLA_PRUEBA_ALEATORIA = 97  # Usar None para una seleccion distinta en cada ejecucion
 CARPETA_RESULTADOS = CARPETA_DATOS.parent / "1_Resultados_ERD_ERS"
 CARPETA_PRUEBA_ALEATORIA = CARPETA_DATOS.parent / "3_Resultados_Prueba_Aleatoria"
