@@ -1,3 +1,0 @@
-trial,seed,fps,jitter_plan,fijacion_plan,tarea_plan,reposo_plan,t_jitter_lsl,t_fix_lsl,t_cue_lsl,t_reposo_lsl,t_reposo3s_lsl,dur_jitter_real,dur_fijacion_real,dur_tarea_real,dur_reposo_3s_real,frames_perdidos,pct_tiempo_en_rango,fuerza_media_pct_mvc,mvc_sobre_tara,tara_raw
-1,1792507705,59.87,1.707,3.0,10.0,5.0,539059.263896,539060.962684,539063.980429,539074.664269,539077.663147,1.6988,3.0177,10.6838,2.9989,72,77.3,13.85,42.5000,57.0000
-2,1792507705,59.87,1.025,3.0,10.0,5.0,539079.646465,539080.680157,539083.681138,539094.346041,539097.346411,1.0337,3.0010,10.6649,3.0004,73,79.3,18.66,42.5000,57.0000
