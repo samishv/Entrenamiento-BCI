@@ -46,8 +46,8 @@ os.environ.pop("SDL_VIDEO_CENTERED", None)
 # =============================================================================
 
 # ===== JUGABILIDAD =====
-AUTO_SPEED = 2                      # Velocidad del autorun (px por frame) ERA 2
-FAIL_RETURN_SPEED = 1.2             # Velocidad del autorun mientras el jugador se recupera de un fallo ERA 1.2
+AUTO_SPEED = 1                      # Velocidad del autorun (px por frame) ERA 2
+FAIL_RETURN_SPEED = 1             # Velocidad del autorun mientras el jugador se recupera de un fallo ERA 1.2
 TOTAL_CHALLENGES = 3               # Cantidad de desafíos (globos) por nivel
 FIRST_STOP_TILE = 38                # Tile donde se detiene el jugador en el primer desafío
 CHALLENGE_SPACING_TILES = 60        # Distancia (en tiles) entre un desafío y el siguiente
@@ -65,31 +65,32 @@ DEFAULT_LEVEL_TIME_LIMIT = 2        # Tiempo para los niveles que no estén en L
 
 # ===== COLORES DEL JUGADOR =====
 PLAYER_COLOR_PALETTES = {
-    "ORIGINAL": ((177, 212, 128), (128, 184, 120), (101, 141, 120)),
-    "MENTA":    ((181, 244, 187), (173, 235, 179), (159, 220, 165)),
-    "VERDE":    ((44,  202, 97),  (21,  191, 87),  (0,   179, 79)),
-    "TURQUESA": ((88,  222, 217), (72,  209, 204), (55,  196, 192)),
-    "CELESTE":  ((150, 228, 255), (144, 220, 247), (138, 212, 238)),
-    "AZUL":     ((75,  153, 255), (30,  144, 255), (0,   135, 243)),
-    "INDIGO":   ((95,  107, 243), (85,  100, 235), (75,  93,  227)),
-    "MORADO":   ((148, 100, 255), (139, 92,  246), (130, 84,  237)),
-    "CAFE":     ((153, 106, 100), (145, 99,  93),  (137, 92,  86)),
-    "NEGRO":    ((39,  39,  39),  (31,  31,  31),  (25,  25,  25)),
-    "GRIS":     ((188, 195, 197), (176, 183, 185), (164, 171, 173)),
-    "BLANCO":   ((248, 248, 255), (240, 240, 248), (232, 232, 240)),
-    "BEIGE":    ((255, 255, 240), (253, 245, 230), (243, 235, 220)),
-    "GUINDA":   ((112, 43,  75),  (104, 36,  68),  (96,  29,  61)),
-    "ROJO":     ((204, 29,  85),  (195, 11,  78),  (184, 0,   72)),
-    "ROSA":     ((255, 194, 221), (255, 174, 212), (241, 161, 199)),
-    "SALMON":   ((243, 161, 150), (231, 150, 139), (219, 139, 128)),
-    "NARANJA":  ((255, 182, 87),  (255, 165, 0),   (239, 154, 0)),
-    "AMARILLO": ((255, 255, 0),   (245, 245, 0),   (235, 235, 0)),
-    "LIMA":     ((201, 255, 118), (173, 255, 47),  (157, 239, 21)),
+    "ORIGINAL":   ((177, 212, 128), (128, 184, 120), (101, 141, 120)),
+    "MENTA":      ((181, 244, 187), (173, 235, 179), (159, 220, 165)),
+    "VERDE":      ((44,  202, 97),  (21,  191, 87),  (0,   179, 79)),
+    "TURQUESA":   ((88,  222, 217), (72,  209, 204), (55,  196, 192)),
+    "CELESTE":    ((150, 228, 255), (144, 220, 247), (138, 212, 238)),
+    "AZUL":       ((75,  153, 255), (30,  144, 255), (0,   135, 243)),
+    "INDIGO":     ((95,  107, 243), (85,  100, 235), (75,  93,  227)),
+    "MORADO":     ((148, 100, 255), (139, 92,  246), (130, 84,  237)),
+    "BUGAMBILIA": ((148, 100, 255), (139, 92,  246), (130, 84,  237)),
+    "CAFE":       ((153, 106, 100), (145, 99,  93),  (137, 92,  86)),
+    "NEGRO":      ((39,  39,  39),  (31,  31,  31),  (25,  25,  25)),
+    "GRIS":       ((188, 195, 197), (176, 183, 185), (164, 171, 173)),
+    #"BLANCO":     ((248, 248, 255), (240, 240, 248), (232, 232, 240)),
+    #"BEIGE":      ((255, 255, 240), (253, 245, 230), (243, 235, 220)),
+    "GUINDA":     ((112, 43,  75),  (104, 36,  68),  (96,  29,  61)),
+    "ROJO":       ((204, 29,  85),  (195, 11,  78),  (184, 0,   72)),
+    "ROSA":       ((255, 194, 221), (255, 174, 212), (241, 161, 199)),
+    "SALMON":     ((243, 161, 150), (231, 150, 139), (219, 139, 128)),
+    "NARANJA":    ((255, 182, 87),  (255, 165, 0),   (239, 154, 0)),
+    "AMARILLO":   ((255, 255, 0),   (245, 245, 0),   (235, 235, 0)),
+    "LIMA":       ((201, 255, 118), (173, 255, 47),  (157, 239, 21)),
 }
 
 # ===== FONDO PARALLAX =====
 PARALLAX_LAYER_SPEEDS = [0.05, 0.25, 0.50, 0.75]   # Factor de velocidad de cada capa móvil (01 a 04)
-PARALLAX_BASE_SPEED = 20.0                   # Velocidad base del fondo (px/s)
+PARALLAX_BASE_SPEED = 10.0                   # Velocidad base del fondo (px/s)
 PARALLAX_ACCEL = 50.0                        # Aceleración al arrancar
 PARALLAX_DECEL = 50.0                       # Desaceleración al detenerse
 

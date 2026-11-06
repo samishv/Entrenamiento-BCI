@@ -28,13 +28,13 @@ plt.close("all")
 # =============================================================================
 
 # --- SPYDER
-CARPETA_SUJETO = Path(
-    r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-    r"\SV3"
-)
+#CARPETA_SUJETO = Path(
+#    r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+#    r"\SV3"
+#)
 
 # --- VSCODE
-# CARPETA_SUJETO = (Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SK1")
+CARPETA_SUJETO = (Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SV3")
 
 # =============================================================================
 # VARIABLES MODIFICABLES
@@ -63,20 +63,20 @@ BANDAS = {
 # Subbandas: graficas temporales de ERD/ERS y relacion Mu/Beta "Delimitada".
 BANDAS_ANALISIS = {
     "Ritmo Mu":    (11.0, 12.0),
-    "Ritmo Beta":  (17.0, 20.0),
+    "Ritmo Beta":  (17.0, 22.0),
 }
 
 # --- Preprocesamiento --------------------------------------------------------
-F_LOW = 7.0                                                 
-F_HIGH = 31.0
+F_LOW = 8.0                                                 
+F_HIGH = 30.0
 ELIMINAR_DC = True
 USAR_ICA = False
 IC_TO_REMOVE = None                                         
 USAR_LAPLACIANO = True
 
 # --- ERSP con Morlet ---------------------------------------------------------
-FREQS_MORLET = np.arange(7.0, 32.0, 1.0)                    # rango del escalograma
-N_CYCLES_MORLET_TEMPORAL = np.linspace(5, 10, len(FREQS_MORLET))
+FREQS_MORLET = np.arange(7.0, 31.0, 1.0)                    # rango del escalograma
+N_CYCLES_MORLET_TEMPORAL = np.linspace(6, 15, len(FREQS_MORLET))
 N_CYCLES_MORLET_FRECUENCIAL = np.linspace(14, 40, len(FREQS_MORLET))
 LIMITE_ERSP_DB = None                                       # p. ej. 3.0 para fijar +-3 dB; None = automatico
 CMAP_ERSP = "jet"
@@ -91,8 +91,8 @@ LIMITES_RELACION_MU_BETA = None                             # igual que LIMITES_
 # --- Graficas a generar ------------------------------------------------------
 GENERAR_GRAFICAS = {
     "1_Resultados_ERD_ERS": {
-        "Escalogramas Temporales": False,
-        "Escalogramas Frecuenciales": False,
+        "Escalogramas Temporales": True,
+        "Escalogramas Frecuenciales": True,
         "Pruebas Empalmadas": True,
         "Relacion Mu Beta": True,
         "Ritmo Beta": False,
@@ -101,8 +101,8 @@ GENERAR_GRAFICAS = {
         "Relacion Mu Beta Delimitada": True,
     },
     "2_Resultados_ERD_ERS_Laplaciano": {
-        "Escalogramas Temporales": False,
-        "Escalogramas Frecuenciales": False,
+        "Escalogramas Temporales": True,
+        "Escalogramas Frecuenciales": True,
         "Pruebas Empalmadas": True,
         "Relacion Mu Beta": True,
         "Ritmo Beta": False,
@@ -113,16 +113,16 @@ GENERAR_GRAFICAS = {
     "3_Resultados_Prueba_Aleatoria": {
         "Ritmo Beta": False,
         "Ritmo Mu": False,
-        "ERSP Temporal": False,
-        "ERSP Frecuencial": False,
+        "ERSP Temporal": True,
+        "ERSP Frecuencial": True,
         "Relacion Mu Beta": True,
         "Relacion Mu Beta Delimitada": True,
     },
     "4_Resultados_Prueba_Aleatoria_Laplaciano": {
         "Ritmo Beta": False,
         "Ritmo Mu": False,
-        "ERSP Temporal": False,
-        "ERSP Frecuencial": False,
+        "ERSP Temporal": True,
+        "ERSP Frecuencial": True,
         "Relacion Mu Beta": True,
         "Relacion Mu Beta Delimitada": True,
     },
