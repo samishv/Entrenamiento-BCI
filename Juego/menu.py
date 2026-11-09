@@ -272,7 +272,7 @@ class ConfigMenu(Menu):
     # =========================================================
     PREVIEW_RECT = pygame.Rect(300, 107, 120, 120)
     COLOR_PREVIEW_FRAME_MS = 300
-    HAND_PREVIEW_FRAME_MS = 100
+    HAND_PREVIEW_FRAME_MS = 180
     ARIADNE_PREVIEW_FRAME_MS = 300
 
     # =========================================================
@@ -354,7 +354,7 @@ class ConfigMenu(Menu):
 
         if self.nickname_buffer:
             nickname = self.game.render_bitmap_text_surface(self.nickname_buffer, self.game.bitmap_font_white, spacing=self.game.bitmap_spacing,)
-            nickname_rect = nickname.get_rect(midbottom=((line_left + line_right) // 2, y + 5))
+            nickname_rect = nickname.get_rect(midbottom=((line_left + line_right) // 2, y + 7))
             self.game.display.blit(nickname, nickname_rect)
         else:
             nickname_rect = None
@@ -364,7 +364,7 @@ class ConfigMenu(Menu):
             if nickname_rect:
                 caret_rect = caret.get_rect(midleft=(nickname_rect.right + 2, nickname_rect.centery))
             else:
-                caret_rect = caret.get_rect(center=((line_left + line_right) // 2, y))
+                caret_rect = caret.get_rect(center=((line_left + line_right) // 2, y-3))
             self.game.display.blit(caret, caret_rect)
 
     def _load_preview_folder(self, folder_path):

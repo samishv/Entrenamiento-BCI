@@ -58,7 +58,7 @@ FPS = 60                            # Cuadros por segundo del juego
 
 # ===== TIEMPO PARA PULSAR (segundos) =====
 LEVEL_TIME_LIMITS = {               # {id_nivel: segundos}
-    1: 5,
+    1: 20,
     2: 1,
 }
 DEFAULT_LEVEL_TIME_LIMIT = 2        # Tiempo para los niveles que no estén en LEVEL_TIME_LIMITS
@@ -67,13 +67,13 @@ DEFAULT_LEVEL_TIME_LIMIT = 2        # Tiempo para los niveles que no estén en L
 PLAYER_COLOR_PALETTES = {
     "ORIGINAL":   ((177, 212, 128), (128, 184, 120), (101, 141, 120)),
     "MENTA":      ((181, 244, 187), (173, 235, 179), (159, 220, 165)),
-    "VERDE":      ((44,  202, 97),  (21,  191, 87),  (0,   179, 79)),
+    "VERDE":      ((0, 138, 63), (0, 119, 50), (0, 100, 38)),
     "TURQUESA":   ((88,  222, 217), (72,  209, 204), (55,  196, 192)),
     "CELESTE":    ((150, 228, 255), (144, 220, 247), (138, 212, 238)),
     "AZUL":       ((75,  153, 255), (30,  144, 255), (0,   135, 243)),
     "INDIGO":     ((95,  107, 243), (85,  100, 235), (75,  93,  227)),
     "MORADO":     ((148, 100, 255), (139, 92,  246), (130, 84,  237)),
-    "BUGAMBILIA": ((148, 100, 255), (139, 92,  246), (130, 84,  237)),
+    "BUGAMBILIA": ((218, 93, 230), (202, 75, 214), (184, 58, 196)),
     "CAFE":       ((153, 106, 100), (145, 99,  93),  (137, 92,  86)),
     "NEGRO":      ((39,  39,  39),  (31,  31,  31),  (25,  25,  25)),
     "GRIS":       ((188, 195, 197), (176, 183, 185), (164, 171, 173)),
@@ -84,15 +84,15 @@ PLAYER_COLOR_PALETTES = {
     "ROSA":       ((255, 194, 221), (255, 174, 212), (241, 161, 199)),
     "SALMON":     ((243, 161, 150), (231, 150, 139), (219, 139, 128)),
     "NARANJA":    ((255, 182, 87),  (255, 165, 0),   (239, 154, 0)),
-    "AMARILLO":   ((255, 255, 0),   (245, 245, 0),   (235, 235, 0)),
+    "AMARILLO":   ((245, 230, 0), (225, 210, 0), (205, 190, 0)),
     "LIMA":       ((201, 255, 118), (173, 255, 47),  (157, 239, 21)),
 }
 
 # ===== FONDO PARALLAX =====
-PARALLAX_LAYER_SPEEDS = [0.05, 0.25, 0.50, 0.75]   # Factor de velocidad de cada capa móvil (01 a 04)
-PARALLAX_BASE_SPEED = 10.0                   # Velocidad base del fondo (px/s)
-PARALLAX_ACCEL = 50.0                        # Aceleración al arrancar
-PARALLAX_DECEL = 50.0                       # Desaceleración al detenerse
+PARALLAX_LAYER_SPEEDS = [0.05, 0.15, 0.25, 0.35]   # Factor de velocidad de cada capa móvil (01 a 04)
+# PARALLAX_BASE_SPEED = 10.0                   # Velocidad base del fondo (px/s)
+# PARALLAX_ACCEL = 50.0                        # Aceleración al arrancar
+# PARALLAX_DECEL = 50.0                       # Desaceleración al detenerse
 
 # ===== FADES (HUD / PANTALLA FINAL / MENSAJES), en segundos =====
 FADE_HEARTS_IN_DURATION = 0.5
@@ -272,15 +272,170 @@ class Game:
     BITMAP_SCALE_BIG = 5
     BITMAP_SCALE_MID = 2.3
     BITMAP_SCALE_CHIBI = 0.8
+    
+    # # =============================================================
+    # # MÉTRICAS VERTICALES DE LA FUENTE BITMAP
+    # # =============================================================
+    # BITMAP_REFERENCE_HEIGHT = 12
+    # BITMAP_LOWERCASE_OFFSET = 3
+    # BITMAP_ASCENDERS = "bdfhiklt"
+    # BITMAP_DESCENDERS = "gjpqy"
+    
+    # =============================================================
+    # MÉTRICAS ESTANDARIZADAS DE LA FUENTE BITMAP
+    # =============================================================
+    BITMAP_CELL_HEIGHT = 16
+    BITMAP_CAP_HEIGHT = 12
+    BITMAP_BASELINE = 12
+    BITMAP_DESCENDERS = "gjpqy"
+    BITMAP_BOTTOM_SYMBOLS = "_.,"
+    BITMAP_TOP_SYMBOLS = "”’^"
+    BITMAP_FULL_HEIGHT_SYMBOLS = "{}[]§@$"
+    
+    def _get_normalized_glyph_y(self, ch, glyph):
+        glyph_height = glyph.get_height()
+    
+        # =========================================================
+        # ESPACIO
+        # =========================================================
+        if ch == " ":
+            return 0
+    
+        # =========================================================
+        # MAYÚSCULAS Y NÚMEROS
+        # =========================================================
+        # Se alinean desde la parte superior.
+        if ch.isupper() or ch.isdigit():
+            return 0
+    
+        # =========================================================
+        # MINÚSCULAS
+        # =========================================================
+        if ch.islower():
+    
+            # Las letras con ascendentes utilizan toda su altura
+            # y comienzan en la parte superior.
+            if ch in "bdfhiklt":
+                return 0
+    
+            # Los descendentes conservan el cuerpo de la letra
+            # a la altura de las demás minúsculas y sobresalen abajo.
+            if ch in self.BITMAP_DESCENDERS:
+                return 3
+    
+            # Las minúsculas normales terminan en la línea base.
+            return self.BITMAP_BASELINE - glyph_height
+    
+        # =========================================================
+        # PUNTUACIÓN INFERIOR
+        # =========================================================
+        if ch in self.BITMAP_BOTTOM_SYMBOLS:
+    
+            # El guion bajo ocupa la última fila de la línea principal.
+            if ch == "_":
+                return self.BITMAP_BASELINE - 1
+    
+            # El punto y la coma terminan en la línea base.
+            return self.BITMAP_BASELINE - glyph_height
+    
+        # =========================================================
+        # COMILLAS Y SÍMBOLOS SUPERIORES
+        # =========================================================
+        if ch in self.BITMAP_TOP_SYMBOLS:
+            return 0
+    
+        # =========================================================
+        # CARACTERES MÁS ALTOS QUE 12 PX
+        # =========================================================
+        if ch in self.BITMAP_FULL_HEIGHT_SYMBOLS:
+            return max(
+                0,
+                (self.BITMAP_CELL_HEIGHT - glyph_height) // 2,
+            )
+    
+        # =========================================================
+        # RESTO DE LOS SÍMBOLOS
+        # =========================================================
+        # +, -, =, ¤, *, %, #, &, :, ;, ?, |, <, >, ~, ©...
+        # se centran automáticamente dentro de la altura de 12 px.
+        return max(
+            0,
+            (self.BITMAP_CAP_HEIGHT - glyph_height) // 2,
+        )
 
-    def load_numbered_bitmap_font(self, folder, charset, start_index=1):
+    def _normalize_bitmap_glyph(self, ch, glyph):
+        """
+        Coloca un carácter dentro de una superficie transparente
+        con una altura común de 16 px.
+    
+        Se conserva el ancho original del carácter.
+        """
+    
+        cell_width = max(1, glyph.get_width())
+    
+        normalized = pygame.Surface(
+            (
+                cell_width,
+                self.BITMAP_CELL_HEIGHT,
+            ),
+            pygame.SRCALPHA,
+        )
+    
+        glyph_y = self._get_normalized_glyph_y(
+            ch,
+            glyph,
+        )
+    
+        normalized.blit(
+            glyph,
+            (
+                0,
+                glyph_y,
+            ),
+        )
+    
+        return normalized.convert_alpha()
+
+    def load_numbered_bitmap_font(
+        self,
+        folder,
+        charset,
+        start_index=1,
+    ):
+        """
+        Carga los caracteres numerados y los normaliza dentro
+        de una celda vertical común.
+    
+        Todos los caracteres resultantes tienen 16 px de alto,
+        aunque conservan su ancho original.
+        """
+    
         font = {}
+    
         for i, ch in enumerate(charset):
-            path = os.path.join(folder, f"{start_index + i:02d}.png")
+            file_number = start_index + i
+    
+            path = os.path.join(
+                folder,
+                f"{file_number:02d}.png",
+            )
+    
             try:
-                font[ch] = pygame.image.load(path).convert_alpha()
+                original_glyph = pygame.image.load(
+                    path,
+                ).convert_alpha()
+    
             except FileNotFoundError:
-                raise FileNotFoundError(f"No se encontró {path}. Revisa que existan 01.png..40.png")
+                raise FileNotFoundError(
+                    f"No se encontró {path}. "
+                    f"Revisa que existan los archivos de la fuente."
+                )
+    
+            font[ch] = self._normalize_bitmap_glyph(
+                ch,
+                original_glyph,
+            )
+    
         return font
 
     def recolor_bitmap_font(self, font, color=(255, 255, 255)):
@@ -297,6 +452,14 @@ class Game:
             w, h = img.get_size()
             scaled_font[ch] = pygame.transform.scale(img, (w * scale, h * scale))
         return scaled_font
+
+    def _get_glyph_vertical_offset(self, ch, font):
+        """
+        Los caracteres ya están normalizados al cargar la fuente,
+        por lo que no requieren desplazamientos adicionales.
+        """
+    
+        return 0
 
     def _get_font_metrics(self, font):
         key = id(font)
@@ -315,44 +478,100 @@ class Game:
 
     def _text_baseline(self, text, font, metrics):
         return max((self._glyph(font, metrics, ch)[1] for ch in text), default=0)
-
-    def measure_bitmap_text(self, text, font, spacing=1):
+    
+    def measure_bitmap_text(self, text, font, spacing=1):    
         if not text:
             return 0, 0
-        metrics = self._get_font_metrics(font)
-        baseline = self._text_baseline(text, font, metrics)
-
-        w = 0
-        for i, ch in enumerate(text):
-            img = font.get(ch) or font.get(' ')
-            if img is None:
+    
+        width = 0
+        height = 0
+    
+        for index, ch in enumerate(text):
+            image = font.get(ch) or font.get(" ")
+    
+            if image is None:
                 continue
-            w += img.get_width()
-            if i != len(text) - 1:
-                w += spacing
-        return w, baseline
+    
+            width += image.get_width()
+            height = max(height, image.get_height())
+    
+            if index < len(text) - 1:
+                width += spacing
+    
+        return width, height
 
-    def draw_bitmap_text(self, surface, text, x, y, font, spacing=1, baseline=None):
+
+    def draw_bitmap_text(
+        self,
+        surface,
+        text,
+        x,
+        y,
+        font,
+        spacing=1,
+        baseline=None,
+    ):
+        """
+        Dibuja caracteres ya normalizados verticalmente.
+        """
+    
         if not text:
             return
-        metrics = self._get_font_metrics(font)
-        if baseline is None:
-            baseline = self._text_baseline(text, font, metrics)
-
-        cx = x
+    
+        current_x = x
+    
         for ch in text:
-            img, bottom = self._glyph(font, metrics, ch)
-            if img is None:
-                cx += spacing
+            image = font.get(ch) or font.get(" ")
+    
+            if image is None:
+                current_x += spacing
                 continue
-            surface.blit(img, (cx, y + baseline - bottom))
-            cx += img.get_width() + spacing
+    
+            surface.blit(
+                image,
+                (
+                    current_x,
+                    y,
+                ),
+            )
+    
+            current_x += image.get_width() + spacing
 
-    def render_bitmap_text_surface(self, text, font, spacing=1):
-        w, h = self.measure_bitmap_text(text, font, spacing=spacing)
-        surf = pygame.Surface((max(1, w), max(1, h)), pygame.SRCALPHA)
-        self.draw_bitmap_text(surf, text, 0, 0, font, spacing=spacing, baseline=h)
-        return surf
+    def render_bitmap_text_surface(
+        self,
+        text,
+        font,
+        spacing=1,
+    ):
+        """
+        Genera una superficie con espacio suficiente para
+        letras altas, minúsculas y descendentes.
+        """
+    
+        width, height = self.measure_bitmap_text(
+            text,
+            font,
+            spacing=spacing,
+        )
+    
+        surface = pygame.Surface(
+            (
+                max(1, width),
+                max(1, height),
+            ),
+            pygame.SRCALPHA,
+        )
+    
+        self.draw_bitmap_text(
+            surface,
+            text,
+            0,
+            0,
+            font,
+            spacing=spacing,
+        )
+    
+        return surface
 
     def _approach_alpha(self, alpha, target, duration, dt):
         if duration <= 0:
@@ -480,6 +699,8 @@ class Game:
         self.hand_frames = self.assets["hand"]
         self.hand_frame_idx = 0
         self.hand_timer = 0.0
+        self.hand_rest_timer = 0.0
+        self.hand_is_animating = True
 
     def toggle_hand_mode(self):
         self.set_hand_mode("ZURDO" if self.hand_mode == "DIESTRO" else "DIESTRO")
@@ -513,12 +734,23 @@ class Game:
         self.bg_moving = bg_layers
         self.bg_offsets = [0.0] * len(self.bg_moving)
 
-    def _update_parallax(self, dt, speed_px_s):
-        if speed_px_s <= 0:
+    def _update_parallax(self, camera_delta_x):
+        """
+        Mueve las capas según el desplazamiento real de la cámara.
+    
+        camera_delta_x:
+            Cantidad de píxeles que avanzó la cámara durante
+            el fotograma actual.
+        """
+        if abs(camera_delta_x) < 0.0001:
             return
-        base = speed_px_s * dt
+    
         for i, layer in enumerate(self.bg_moving):
-            self.bg_offsets[i] = (self.bg_offsets[i] + base * PARALLAX_LAYER_SPEEDS[i]) % layer.get_width()
+            layer_speed = PARALLAX_LAYER_SPEEDS[i]
+    
+            self.bg_offsets[i] = (
+                self.bg_offsets[i] + camera_delta_x * layer_speed
+            ) % layer.get_width()
 
     def _draw_parallax(self):
         for i, layer in enumerate(self.bg_moving):
@@ -526,7 +758,7 @@ class Game:
             x = -self.bg_offsets[i]
     
             while x < self.base_size[0]:
-                self.display.blit(layer, (int(x), 0))
+                self.display.blit(layer, (round(x), 0))
                 x += w
 
     # =========================================================================
@@ -537,7 +769,8 @@ class Game:
     BALLOON_POP_FRAME_DURATION = 0.1     # Segundos por cuadro de la animación de reventar
 
     HAND_OFFSET_TILES_Y = 8.5            # Altura de la mano respecto al globo (en tiles)
-    HAND_FRAME_DURATION = 0.15           # Segundos por cuadro de la animación de la mano
+    HAND_FRAME_DURATION = 0.18           # Segundos por cuadro de la animación de la mano
+    HAND_REST_DURATION = 3.0             # Tiempo, en segundos, que la mano permanece en reposo
 
     BRIDGE_W_TILES = 10                  # Ancho del bloque de hielo (tiles)
     BRIDGE_H_TILES = 3                   # Alto del bloque de hielo (tiles)
@@ -637,8 +870,9 @@ class Game:
         self.tile_size = self.tilemap.tile_size
 
         self.player = Player(self, self.PLAYER_START_POS, self.PLAYER_SIZE)
-        self.scroll = [0, 0]
+        self.scroll = [0.0, 0.0]
         self.fixed_scroll_y = None
+        self.camera_delta_x = 0.0
 
         self.auto_speed = AUTO_SPEED
         self.auto_speed_normal = self.auto_speed
@@ -659,6 +893,8 @@ class Game:
         self.hand_frames = self.assets["hand"]
         self.hand_frame_idx = 0
         self.hand_timer = 0.0
+        self.hand_rest_timer = 0.0
+        self.hand_is_animating = True
         self.hand_active = False
 
         self.hearts_alpha = 0
@@ -680,13 +916,15 @@ class Game:
         self.go_phase = "NONE"
         self.go_walk_end_x = None
 
-        self.bg_speed_current = 0.0
+        # self.bg_speed_current = 0.0
 
     # =========================================================================
     # BUCLE PRINCIPAL
     # =========================================================================
     CAMERA_ANCHOR_X = 0.23                   # Posición horizontal del jugador en pantalla (0 a 1)
-    CAMERA_SMOOTHING = 30                    # Mayor valor = cámara más suave
+    CAMERA_SMOOTHING = 20                    # Mayor valor = cámara más suave
+    CAMERA_STOP_SMOOTHING = 20               # Suavizado utilizado cuando el personaje acaba de detenerse.
+    CAMERA_STOP_EPSILON = 0.05               # Distancia mínima para considerar que la cámara ya llegó.
 
     ESCAPE_END_OFFSET_TILES = 11             # Tiles tras la parada fallida donde el jugador salta fuera del agua
     ESCAPE_JUMP_TILES = 6                    # Altura del salto de escape (tiles)
@@ -744,7 +982,10 @@ class Game:
     def _game_loop(self):
         while self.playing and self.running:
             now_anim = pygame.time.get_ticks()
-            frame_dt = (now_anim - self.anim_last_time) / 1000.0
+            frame_dt = min(
+                (now_anim - self.anim_last_time) / 1000.0,
+                1.0 / 30.0
+            )
             self.anim_last_time = now_anim
 
             if not self._handle_events():
@@ -834,25 +1075,71 @@ class Game:
 
     # ----- Cámara y fondo -----
     def _update_camera(self):
+        """
+        Actualiza la cámara y calcula su desplazamiento horizontal.
+    
+        Mientras el personaje avanza, se utiliza el suavizado normal.
+        Cuando el personaje se detiene, la cámara desacelera brevemente
+        hasta alcanzar el encuadre final del desafío.
+        """
+    
         if self.fixed_scroll_y is None:
             self.fixed_scroll_y = self.scroll[1]
-
-        target_scroll_x = self.player.rect().centerx - self.display.get_width() * self.CAMERA_ANCHOR_X
-        self.scroll[0] += (target_scroll_x - self.scroll[0]) / self.CAMERA_SMOOTHING
+    
+        previous_scroll_x = self.scroll[0]
+    
+        # Posición exacta en la que debe quedar la cámara.
+        target_scroll_x = (
+            self.player.rect().centerx
+            - self.display.get_width() * self.CAMERA_ANCHOR_X
+        )
+    
+        if self._is_camera_motion_active():
+            # Movimiento normal durante la carrera.
+            smoothing = self.CAMERA_SMOOTHING
+    
+        else:
+            # Desaceleración corta al detenerse.
+            smoothing = self.CAMERA_STOP_SMOOTHING
+    
+        distance_to_target = target_scroll_x - self.scroll[0]
+    
+        # Si la cámara ya está prácticamente en su posición final,
+        # se ajusta exactamente para evitar movimientos residuales.
+        if (
+            not self._is_camera_motion_active()
+            and abs(distance_to_target) <= self.CAMERA_STOP_EPSILON
+        ):
+            self.scroll[0] = target_scroll_x
+    
+        else:
+            self.scroll[0] += distance_to_target / smoothing
+    
         self.scroll[1] = self.fixed_scroll_y
+    
+        # Movimiento real de la cámara durante este fotograma.
+        # Este mismo desplazamiento será utilizado por el parallax.
+        self.camera_delta_x = (
+            self.scroll[0] - previous_scroll_x
+        )
 
     def _update_background(self, frame_dt):
-        """Parallax sincronizado a la cámara: se mueve mientras el jugador corre."""
-        parallax_active = (
-            self.state in (self.RUNNING, self.FAILED)
-            or (self.state == self.GAME_OVER and self.go_phase != "STOP")
-        )
-        target_speed = PARALLAX_BASE_SPEED if parallax_active else 0.0
-        rate = PARALLAX_ACCEL if target_speed > self.bg_speed_current else PARALLAX_DECEL
-        self.bg_speed_current = self._approach_value(self.bg_speed_current, target_speed, rate, frame_dt)
-
-        self._update_parallax(frame_dt, self.bg_speed_current)
+        """
+        Actualiza el parallax utilizando siempre el desplazamiento
+        real de la cámara, incluida su desaceleración.
+        """
+    
+        self._update_parallax(self.camera_delta_x)
         self._draw_parallax()
+        
+    def _is_camera_motion_active(self):
+        return (
+            self.state in (self.RUNNING, self.FAILED)
+            or (
+                self.state == self.GAME_OVER
+                and self.go_phase != "STOP"
+            )
+        )
 
     # ----- Render del mundo -----
     def _render_bridges(self, render_scroll):
@@ -869,21 +1156,104 @@ class Game:
                     self.display.blit(ice_img, (wx - render_scroll[0], wy - render_scroll[1]))
 
     def _update_and_render_hand(self, frame_dt, render_scroll):
-        if not (self.state == self.WAITING and self.hand_active and self.active_challenge):
+        """
+        Actualiza y dibuja exclusivamente la animación de cierre de mano.
+    
+        La secuencia es:
+            1. Reproducir todos los cuadros.
+            2. Regresar al primer cuadro.
+            3. Esperar HAND_REST_DURATION segundos.
+            4. Volver a reproducir la animación.
+        """
+    
+        # La mano solamente aparece mientras el jugador espera
+        # una respuesta en un desafío activo.
+        if not (
+            self.state == self.WAITING
+            and self.hand_active
+            and self.active_challenge
+        ):
             return
-
-        self.hand_timer += frame_dt
-        while self.hand_timer >= self.HAND_FRAME_DURATION:
-            self.hand_timer -= self.HAND_FRAME_DURATION
-            self.hand_frame_idx = (self.hand_frame_idx + 1) % len(self.hand_frames)
-
+    
+        # Protección por si la carpeta de la mano no contiene imágenes.
+        if not self.hand_frames:
+            return
+    
+        # =========================================================
+        # FASE 1: ANIMACIÓN DE CIERRE
+        # =========================================================
+        if self.hand_is_animating:
+    
+            self.hand_timer += frame_dt
+    
+            # Se utiliza while para no perder cuadros si un fotograma
+            # del juego tarda más de lo esperado.
+            while self.hand_timer >= self.HAND_FRAME_DURATION:
+    
+                self.hand_timer -= self.HAND_FRAME_DURATION
+                self.hand_frame_idx += 1
+    
+                # Si ya se mostraron todos los cuadros,
+                # comienza la fase de reposo.
+                if self.hand_frame_idx >= len(self.hand_frames):
+    
+                    # Durante el reposo se muestra el primer cuadro,
+                    # correspondiente a la posición inicial de la mano.
+                    self.hand_frame_idx = 0
+    
+                    self.hand_is_animating = False
+                    self.hand_rest_timer = 0.0
+                    self.hand_timer = 0.0
+    
+                    break
+    
+        # =========================================================
+        # FASE 2: REPOSO ENTRE ANIMACIONES
+        # =========================================================
+        else:
+    
+            self.hand_rest_timer += frame_dt
+    
+            # Cuando termina el reposo, se inicia nuevamente
+            # la animación desde el primer cuadro.
+            if self.hand_rest_timer >= self.HAND_REST_DURATION:
+    
+                self.hand_rest_timer = 0.0
+                self.hand_timer = 0.0
+                self.hand_frame_idx = 0
+                self.hand_is_animating = True
+    
+        # =========================================================
+        # DIBUJADO DE LA MANO
+        # =========================================================
         cur = self.current_challenge()
-        if cur:
-            hand_img = self.hand_frames[self.hand_frame_idx]
-            hand_world_x = cur["balloon_tile_x"] * self.tilemap.tile_size
-            hand_screen_x = int(hand_world_x - render_scroll[0] - hand_img.get_width() // 2)
-            hand_screen_y = int(cur["hand_world_y"] - render_scroll[1] - hand_img.get_height() // 2)
-            self.display.blit(hand_img, (hand_screen_x, hand_screen_y))
+    
+        if cur is None:
+            return
+    
+        hand_img = self.hand_frames[self.hand_frame_idx]
+    
+        hand_world_x = (
+            cur["balloon_tile_x"]
+            * self.tilemap.tile_size
+        )
+    
+        hand_screen_x = int(
+            hand_world_x
+            - render_scroll[0]
+            - hand_img.get_width() // 2
+        )
+    
+        hand_screen_y = int(
+            cur["hand_world_y"]
+            - render_scroll[1]
+            - hand_img.get_height() // 2
+        )
+    
+        self.display.blit(
+            hand_img,
+            (hand_screen_x, hand_screen_y)
+        )
 
     def _render_balloons(self, render_scroll):
         ts = self.tilemap.tile_size
@@ -919,9 +1289,12 @@ class Game:
                 cur = self.current_challenge()
                 if cur:
                     cur["press_count"] = 0
+                
                     self.hand_active = True
-                    self.hand_timer = 0.0
                     self.hand_frame_idx = 0
+                    self.hand_timer = 0.0
+                    self.hand_rest_timer = 0.0
+                    self.hand_is_animating = True
 
                 self.state = self.WAITING
                 self.time_left = self.time_limit
@@ -1178,73 +1551,167 @@ class Game:
             self.display.blit(heart_img, (self.base_size[0] - heart_img.get_width() - margin, margin))
 
     def _draw_progress_messages(self, show_end):
-        if not (self.state == self.RUNNING and self.msg_alpha > 0 and not show_end):
+        if not (
+            self.state == self.RUNNING
+            and self.msg_alpha > 0
+            and not show_end
+        ):
             return
     
-        # =============================================================
-        # TEXTOS DEL MENSAJE
-        # =============================================================
+        # --- TEXTOS DEL MENSAJE
         remaining = max(0, TOTAL_CHALLENGES - self.stop_index)
     
-        texts = ("GLOBOS RESTANTES", str(remaining), "PUNTUACION", str(self.score))
+        texts = (
+            "GLOBOS RESTANTES",
+            str(remaining),
+            "PUNTUACION",
+            str(self.score),
+        )
     
         s1_label, s1_val, s2_label, s2_val = [
-            self.render_bitmap_text_surface(text, self.bitmap_font_white, spacing=self.bitmap_spacing)
+            self.render_bitmap_text_surface(
+                text,
+                self.bitmap_font_white,
+                spacing=self.bitmap_spacing,
+            )
             for text in texts
         ]
     
-        # =============================================================
-        # POSICIONES DE LOS TEXTOS
-        # =============================================================
-        cx = self.base_size[0] // 2
-        cy = self.base_size[1] // 4
-        y_gap = 6
+        # --- DISTRIBUCIÓN CENTRADA DEL CONTENIDO
+        center_x = self.base_size[0] // 2
+        center_y = self.base_size[1] // 4
     
-        x_label = cx - 144
-        x1_val  = cx + 144
-        x2_val  = cx + 144 if self.score == 0 else cx + 128
+        row_gap = 6
+        column_gap = 80
     
-        y1 = cy - s1_label.get_height() - y_gap
-        y2 = cy + y_gap
+        label_column_width = max(
+            s1_label.get_width(),
+            s2_label.get_width(),
+        )
     
-        # =============================================================
-        # RECTÁNGULO QUE ABARCA TODOS LOS TEXTOS
-        # =============================================================
+
+        value_column_width = max(
+            s1_val.get_width(),
+            s2_val.get_width(),
+        )
+    
+        content_width = (
+            label_column_width
+            + column_gap
+            + value_column_width
+        )
+    
+        content_left = center_x - content_width // 2
+    
+        x_label = content_left
+    
+        values_right = content_left + content_width
+    
+        x1_val = values_right - s1_val.get_width()
+        x2_val = values_right - s2_val.get_width()
+    
+        row1_height = max(
+            s1_label.get_height(),
+            s1_val.get_height(),
+        )
+        row2_height = max(
+            s2_label.get_height(),
+            s2_val.get_height(),
+        )
+    
+        content_height = row1_height + row_gap + row2_height
+        content_top = center_y - content_height // 2
+    
+        y1_label = content_top + (
+            row1_height - s1_label.get_height()
+        ) // 2
+    
+        y1_val = content_top + (
+            row1_height - s1_val.get_height()
+        ) // 2
+    
+        second_row_top = content_top + row1_height + row_gap
+    
+        y2_label = second_row_top + (
+            row2_height - s2_label.get_height()
+        ) // 2
+    
+        y2_val = second_row_top + (
+            row2_height - s2_val.get_height()
+        ) // 2
+    
+        # --- RECTÁNGULOS DE LOS TEXTOS
         text_rects = [
-            s1_label.get_rect(topleft=(x_label, y1)),
-            s1_val.get_rect(topleft=(x1_val, y1)),
-            s2_label.get_rect(topleft=(x_label, y2)),
-            s2_val.get_rect(topleft=(x2_val, y2)),
+            s1_label.get_rect(topleft=(x_label, y1_label)),
+            s1_val.get_rect(topleft=(x1_val, y1_val)),
+            s2_label.get_rect(topleft=(x_label, y2_label)),
+            s2_val.get_rect(topleft=(x2_val, y2_val)),
         ]
     
+        # --- PANEL TRANSPARENTE CENTRADO
         panel_rect = text_rects[0].unionall(text_rects[1:])
-        panel_rect.inflate_ip(self.PROGRESS_PANEL_PADDING_X * 2, self.PROGRESS_PANEL_PADDING_Y * 2)
     
-        panel_surface = pygame.Surface(panel_rect.size, pygame.SRCALPHA)
-        panel_alpha = int(self.PROGRESS_PANEL_ALPHA * (self.msg_alpha / 255.0))
+        panel_rect.inflate_ip(
+            self.PROGRESS_PANEL_PADDING_X * 2,
+            self.PROGRESS_PANEL_PADDING_Y * 2,
+        )
+    
+        panel_surface = pygame.Surface(
+            panel_rect.size,
+            pygame.SRCALPHA,
+        )
+    
+        panel_alpha = int(
+            self.PROGRESS_PANEL_ALPHA
+            * (self.msg_alpha / 255.0)
+        )
     
         pygame.draw.rect(
             panel_surface,
-            (self.PROGRESS_PANEL_COLOR[0], self.PROGRESS_PANEL_COLOR[1], self.PROGRESS_PANEL_COLOR[2], panel_alpha),
+            (
+                self.PROGRESS_PANEL_COLOR[0],
+                self.PROGRESS_PANEL_COLOR[1],
+                self.PROGRESS_PANEL_COLOR[2],
+                panel_alpha,
+            ),
             panel_surface.get_rect(),
-            border_radius=self.PROGRESS_PANEL_RADIUS
+            border_radius=self.PROGRESS_PANEL_RADIUS,
         )
     
-        self.display.blit(panel_surface, panel_rect.topleft)
+        self.display.blit(
+            panel_surface,
+            panel_rect.topleft,
+        )
     
-        # =============================================================
-        # FADE DE LAS LETRAS
-        # =============================================================
-        for surface in (s1_label, s1_val, s2_label, s2_val):
+        # --- TRANSPARENCIA DE LOS TEXTOS
+        for surface in (
+            s1_label,
+            s1_val,
+            s2_label,
+            s2_val,
+        ):
             surface.set_alpha(int(self.msg_alpha))
+
+        # --- DIBUJADO DE LOS TEXTOS
+        self.display.blit(
+            s1_label,
+            (x_label, y1_label),
+        )
     
-        # =============================================================
-        # DIBUJADO DE LOS TEXTOS
-        # =============================================================
-        self.display.blit(s1_label, (x_label, y1))
-        self.display.blit(s1_val, (x1_val, y1))
-        self.display.blit(s2_label, (x_label, y2))
-        self.display.blit(s2_val, (x2_val, y2))
+        self.display.blit(
+            s1_val,
+            (x1_val, y1_val),
+        )
+    
+        self.display.blit(
+            s2_label,
+            (x_label, y2_label),
+        )
+    
+        self.display.blit(
+            s2_val,
+            (x2_val, y2_val),
+        )
 
     def _draw_end_screen(self):
         """Pantalla final (WIN / GAME OVER) estilo Minecraft."""
@@ -1260,11 +1727,21 @@ class Game:
 
         for s in (s_gr, s_completed, s_pts, s_score):
             s.set_alpha(end_alpha)
-
-        self.display.blit(s_gr, (11 * 16, 11 * 16))
-        self.display.blit(s_completed, ((25 if self.score == 0 else 26) * 16, 11 * 16))
-        self.display.blit(s_pts, (11 * 16, 12 * 16))
-        self.display.blit(s_score, (25 * 16, 12 * 16))
+        
+        # --- POSICIONES DE LOS RESULTADOS FINALES
+        labels_left = 11 * 16
+        values_right = 27 * 16
+        
+        row1_y = 11 * 16
+        row2_y = 12 * 16
+        
+        completed_x = values_right - s_completed.get_width()
+        score_x = values_right - s_score.get_width()
+        
+        self.display.blit(s_gr, (labels_left, row1_y))
+        self.display.blit(s_pts, (labels_left, row2_y))
+        self.display.blit(s_completed, (completed_x, row1_y))
+        self.display.blit(s_score, (score_x, row2_y))
 
         # --- Títulos grandes
         if self.state == self.WIN:
