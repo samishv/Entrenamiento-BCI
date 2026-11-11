@@ -28,13 +28,13 @@ plt.close("all")
 # =============================================================================
 
 # --- SPYDER
-CARPETA_SUJETO = Path(
-   r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-   r"\SV1"
-)
+#CARPETA_SUJETO = Path(
+#    r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
+#    r"\SV3"
+#)
 
 # --- VSCODE
-# CARPETA_SUJETO = (Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SV3")
+CARPETA_SUJETO = (Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SK3")
 
 # =============================================================================
 # VARIABLES MODIFICABLES

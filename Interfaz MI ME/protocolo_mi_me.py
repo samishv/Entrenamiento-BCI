@@ -58,7 +58,7 @@ COLORES = {'A': {'MI': '#3A7BD5', 'ME': '#BE6E14'},
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGENES = {
     'MI': os.path.join(BASE_DIR, 'cerebro5.png'),
-    'ME': os.path.join(BASE_DIR, 'ME_L.png')
+    'ME': os.path.join(BASE_DIR, 'ME_R.png')
 }   
 
 TEXTO_INSTR = (

@@ -34,12 +34,12 @@ import pyxdf
 MODO = 'procesar'        # 'procesar' = recortar .xdf | 'visualizar' = graficar .npy
 
 # --- Entrada (modo 'procesar') -----------------------------------------------
-RUTA_ARCHIVO_XDF = r"Protocolo ERD_ERS\Signals\SK2\*.xdf"
+RUTA_ARCHIVO_XDF = r"Protocolo ERD_ERS\Signals\SK3\*.xdf"
 RUTAS_XDF = [RUTA_ARCHIVO_XDF]   # lista de archivos .xdf o patrones glob (ej. r"...\SVX\*.xdf")
 # --- Salida de los trials .npy -----------------------------------------------
 # Se guardan en <RUTA_SIGNALS>\<CARPETA_SUJETO>\{ME, MI, CSV, NPZ}
 RUTA_SIGNALS = r"Protocolo ERD_ERS\Signals"
-CARPETA_SUJETO = 'SK2'           # SV1, SV2, SK1, ... = todos los .xdf van a ese sujeto
+CARPETA_SUJETO = 'SK3'           # SV1, SV2, SK1, ... = todos los .xdf van a ese sujeto
 GUARDAR_NPY = True               # guardar un .npy por trial
 
 # --- Salida de los .npz ------------------------------------------------------
