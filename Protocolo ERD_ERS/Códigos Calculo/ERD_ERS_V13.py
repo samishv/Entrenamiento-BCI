@@ -27,11 +27,11 @@ plt.close("all")
 # SELECCION DEL ENTORNO Y CARPETA DEL PARTICIPANTE
 # =============================================================================
 
-# --- SPYDER
-#CARPETA_SUJETO = Path(
+# # --- SPYDER
+# CARPETA_SUJETO = Path(
 #    r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI\Protocolo ERD_ERS\Signals"
-#    r"\SV3"
-#)
+#    r"\SK3"
+# )
 
 # --- VSCODE
 CARPETA_SUJETO = (Path.cwd() / "Protocolo ERD_ERS" / "Signals" / "SK3")
@@ -46,12 +46,12 @@ CARPETAS_A_ANALIZAR = {
 }
 
 LATERALIDAD = "diestro"                                     # Opciones: "diestro" o "zurdo"
-SEMILLA_PRUEBA_ALEATORIA = 97                               # None = una seleccion distinta en cada ejecucion
+SEMILLA_PRUEBA_ALEATORIA = None                             # None = una seleccion distinta en cada ejecucion
 
 # --- Figuras -----------------------------------------------------------------
 GUARDAR_FIGURAS = True
 MOSTRAR_FIGURAS = False
-MAXIMIZAR_FIGURAS = True
+MAXIMIZAR_FIGURAS = False
 
 # --- Bandas ------------------------------------------------------------------
 # Bandas generales: referencia visual en los escalogramas y relacion Mu/Beta "Completa".
