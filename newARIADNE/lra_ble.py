@@ -31,7 +31,7 @@ async def main():
 
         print("\nComandos disponibles:")
         print("  CALIBRAR    — calibra si no hay datos guardados")
-        print("  INT,DELAY   — vibra (ej: 150,2000)")
+        print("  INT,DELAY   — vibra (ej: 127,500)")
         print("  salir       — desconecta\n")
 
         while True:

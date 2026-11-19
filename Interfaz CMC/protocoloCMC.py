@@ -338,10 +338,10 @@ def menu_inicio(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--pid', default='X')
-    ap.add_argument('--sesion', default='D1')
-    ap.add_argument('--bloque', default='B1')
-    ap.add_argument('--pantalla', type=int, default=0, help='monitor del sujeto')
+    ap.add_argument('--pid', default='S')
+    ap.add_argument('--sesion', default='D')
+    ap.add_argument('--bloque', default='B')
+    ap.add_argument('--pantalla', type=int, default=1, help='monitor del sujeto')
     ap.add_argument('--n_trials', type=int, default=N_TRIALS)
     ap.add_argument('--eeg_stream', default='streamTEST')
     ap.add_argument('--puerto', default='COM3', help='puerto serial del dinamómetro')
@@ -461,23 +461,23 @@ def main():
 
     def calibrar():
         if a.mvc is not None:                           # MVC previo: solo tara
-            esperar("Calibración (MVC previo)\n\nPresiona ESPACIO para medir la tara")
+            esperar("Calibración\n\nPresiona ESPACIO para calibrar a 0")
             medir_tara()
             cal['mvc'] = a.mvc - cal['base']
             enviar(f"mvc_value={a.mvc:.4f}")
             return
 
-        txt_top = visual.TextStim(win, text='Aprieta el dinamómetro con la MÁXIMA fuerza.\n'
+        txt_top = visual.TextStim(win, text='Aprieta con la MÁXIMA fuerza.\n'
                                   'Puedes repetirlo varias veces.',
                                   pos=(0, 0.38), height=0.04, color='white',
                                   font=FUENTE, wrapWidth=1.5)
         txt_pico = visual.TextStim(win, text='', pos=(0, -0.45), height=0.035,
                                    color='#BDBDBD', font=FUENTE)
         while True:
-            esperar("CALIBRACION DE FUERZA MÁXIMA MVC\n\n"
-                    "1) Primero relaja la mano 2 s (calibración a cero).\n"
-                    "2) Luego aprieta lo más fuerte que puedas.\n\n"
-                    "Presiona ESPACIO para comenzar")
+            esperar("CALIBRACION DE FUERZA MÁXIMA\n\n"
+                    "1) No apretes.\n"
+                    "2) Aprieta lo más fuerte que puedas.\n\n"
+                    "ESPACIO para comenzar")
             medir_tara()
 
             pico, primero = 0.0, True
