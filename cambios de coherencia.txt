@@ -1,0 +1,15 @@
+1. frame rate tarda mucho 
+
+
+4. pasar en medio el punto
+
+5. cambiar a los colores de la primer interfaz (dijo que nel)
+
+
+7. encuadrar la franja verde (centrar)
+
+8. la otra se veía mas pro :(
+
+9. que el periodo de tiempo aumente para que no agarre de bajada a los usuarios en los beeps, ósea que se muestre la pantalla pero que luego sea el beep (pantalla de las 3 pulsaciones)
+
+12. que a todas las pantallas de las instrucciones se agregue una linea azul

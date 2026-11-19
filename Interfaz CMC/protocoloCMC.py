@@ -45,6 +45,7 @@ import numpy as np
 
 from psychopy import prefs
 #prefs.hardware['audioDevice'] = 'Altavoces (2- Realtek(R) Audio)'
+prefs.hardware['audioDevice'] = 'Altavoces (Realtek(R) Audio)'
 prefs.hardware['audioLib'] = ['ptb', 'sounddevice']   # antes de importar sound
 prefs.hardware['audioLatencyMode'] = 3
 from psychopy import visual, core, event, sound, gui
@@ -59,11 +60,11 @@ TAREA_S        = 10.0       # cue + beep + gráfica de fuerza
 REPOSO_S       = 5.0        # pantalla negra, fijo
 REPOSO_MARCA_S = 3.0        # marcador 'reposo_3s' a los 3 s de reposo_start
 N_TRIALS       = 20         # trials por bloque
-BEEP_HZ, BEEP_S = 1000, 0.3
+BEEP_HZ, BEEP_S = 700, 0.3
 
 # ─── Fuerza ──────────────────────────────────────────────────────────────────
 OBJ_PCT        = 15.0       # objetivo: 15 % del MVC
-TOL_PCT        = 5.0        # ± 5 % del MVC  -> zona 10-20 %
+TOL_PCT        = 3.0        # ± 3 % del MVC  -> zona 12-18 %
 FS_DINO        = 200.0      # Hz; debe coincidir con FS_HZ del sketch del Arduino
 Y_MAX_PCT      = 40.0       # tope del eje Y de la gráfica (% MVC)
 HIST_S         = 5.0        # segundos de historia visibles en la gráfica
@@ -76,8 +77,8 @@ FUENTE = 'Minecraft'  # fuente de los textos (si no está, usa la predeterminada
 
 TEXTO_INSTR = (
     "1) Mira la cruz y evita moverte.\n\n"
-    "2) Al escuchar el beep, aprieta el dinamómetro y mantén la línea\n"
-    "dentro de la zona verde durante toda la tarea.\n\n"
+    "2) Al escuchar el beep, aprieta el dinamómetro y mantente en \n"
+    "la zona verde.\n\n"
     "3) Durante la pantalla negra, relájate.\n\n"
 )
 
@@ -344,7 +345,7 @@ def main():
     ap.add_argument('--pantalla', type=int, default=1, help='monitor del sujeto')
     ap.add_argument('--n_trials', type=int, default=N_TRIALS)
     ap.add_argument('--eeg_stream', default='streamTEST')
-    ap.add_argument('--puerto', default='COM3', help='puerto serial del dinamómetro')
+    ap.add_argument('--puerto', default='COM10', help='puerto serial del dinamómetro')
     ap.add_argument('--baud', type=int, default=115200)
     ap.add_argument('--mvc', type=float, default=None,
                     help='MVC previo (raw, sin tara); si se da, omite el apretón de calibración')
@@ -419,15 +420,15 @@ def main():
                 raise Abortar()
         return ultimo['t']
 
-    def dib_texto(msg, pos=(0, 0), height=0.04):
+    def dib_texto(msg, pos=(0, 0), height=0.06):
         t = visual.TextStim(win, text=msg, pos=pos, height=height, color='white',
-                            font=FUENTE, wrapWidth=1.5)
+                            font=FUENTE, wrapWidth=2)
         return t.draw
 
     def esperar(msg, teclas=('space',)):
         """Pantalla de texto que pausa la interfaz hasta pulsar una de `teclas`."""
-        t = visual.TextStim(win, text=msg, height=0.04, color='white',
-                            font=FUENTE, wrapWidth=1.5)
+        t = visual.TextStim(win, text=msg, height=0.06, color='white',
+                            font=FUENTE, wrapWidth=2)
         t.draw(); win.flip()
         event.clearEvents()
         k = event.waitKeys(keyList=list(teclas) + ['escape'])
@@ -467,16 +468,15 @@ def main():
             enviar(f"mvc_value={a.mvc:.4f}")
             return
 
-        txt_top = visual.TextStim(win, text='Aprieta con la MÁXIMA fuerza.\n'
-                                  'Puedes repetirlo varias veces.',
-                                  pos=(0, 0.38), height=0.04, color='white',
-                                  font=FUENTE, wrapWidth=1.5)
+        txt_top = visual.TextStim(win, text='Aprieta con la MÁXIMA fuerza.\n',
+                                  pos=(0, 0.38), height=0.06, color='white',
+                                  font=FUENTE, wrapWidth=2)
         txt_pico = visual.TextStim(win, text='', pos=(0, -0.45), height=0.035,
                                    color='#BDBDBD', font=FUENTE)
         while True:
-            esperar("CALIBRACION DE FUERZA MÁXIMA\n\n"
-                    "1) No apretes.\n"
-                    "2) Aprieta lo más fuerte que puedas.\n\n"
+            esperar("CALIBRACION DE FUERZA MAXIMA\n\n\n\n"
+                    "1) No aprietes.\n"
+                    "2) Aprieta lo mas fuerte que puedas.\n\n\n\n"
                     "ESPACIO para comenzar")
             medir_tara()
 
@@ -505,22 +505,24 @@ def main():
                     break
             enviar('mvc_calib_end')
             enviar(f"mvc_value={pico + cal['base']:.4f}")
-            k = esperar(f"MVC = {pico:.2f}\n\n" # Según yo ya viene en Newtons
-                        f"Zona objetivo: {OBJ_PCT - TOL_PCT:.0f}-{OBJ_PCT + TOL_PCT:.0f} % "
-                        f"= {pico * (OBJ_PCT - TOL_PCT) / 100:.2f}-"
-                        f"{pico * (OBJ_PCT + TOL_PCT) / 100:.2f}\n\n"
-                        "ESPACIO = aceptar   |   R = repetir calibración",
-                        teclas=('space', 'r'))
-            if k == 'space':
-                cal['mvc'] = pico
-                break
+            #k = esperar(f"MVC = {pico:.2f}\n\n" # Según yo ya viene en Newtons
+            #            f"Zona objetivo: {OBJ_PCT - TOL_PCT:.0f}-{OBJ_PCT + TOL_PCT:.0f} % "
+            #            f"= {pico * (OBJ_PCT - TOL_PCT) / 100:.2f}-"
+            #            f"{pico * (OBJ_PCT + TOL_PCT) / 100:.2f}\n\n"
+            #            "ESPACIO = aceptar   |   R = repetir calibración",
+            #            teclas=('space', 'r'))
+            #if k == 'space':
+                #cal['mvc'] = pico
+                #break
+            cal['mvc'] = pico
+            break
         print(f"[INFO] MVC (con calibracion a cero) = {cal['mvc']:.4f}")
 
     # ── Sync (apretones rápidos para alinear EMG con fuerza) ────────────────
     def sync(tag):
         top = visual.TextStim(win, text='Cuando suene el beep, aprieta el dinamómetro\n'
                               'fuerte y rápido 3 veces, y relaja.',
-                              pos=(0, 0.38), height=0.04, color='white',
+                              pos=(0, 0.38), height=0.06, color='white',
                               font=FUENTE, wrapWidth=1.5)
 
         def dib():
