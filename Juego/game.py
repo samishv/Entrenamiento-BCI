@@ -4,6 +4,9 @@ import csv
 import pygame
 import asyncio
 import threading
+import math
+import time
+import array
 from datetime import datetime
 from bleak import BleakClient, BleakScanner
 
@@ -100,9 +103,18 @@ FADE_HEARTS_OUT_DURATION = 0.25
 FADE_END_TITLE_DURATION = 1.0
 FADE_MSG_DURATION = 0.5
 
+# ===== ANIMACIÓN DE LA MANO (cierre y apertura de puño) =====
+# Secuencia: [espera inicial] -> cierra -> [mano cerrada] -> abre -> [intervalo] -> repite
+HAND_START_DELAY_S = 0.6            # Tiempo entre el beep (llegada al desafío) y el inicio de la primera animación (mano abierta visible)
+HAND_FRAME_DURATION_S = 0.15        # Tiempo entre frames durante el cierre y la apertura
+HAND_CLOSED_HOLD_S = 1.0            # Tiempo que la mano permanece cerrada
+HAND_REPEAT_INTERVAL_S = 3.0        # Tiempo entre que termina una animación (mano abierta) y empieza la siguiente
+HAND_CLOSED_FIRST_FRAME = 6         # Primer frame con la mano completamente cerrada (se cuenta desde 1)
+HAND_CLOSED_LAST_FRAME = 9          # Último frame con la mano completamente cerrada (se cuenta desde 1)
+
 # ===== MENSAJES DE PROGRESO =====
 PROGRESS_MSG_INTERVALS = [                                              # Pantallas de Score actual y globos restantes
-    (10, 20) if i == 0 else (62 + (i - 1) * 60, 80 + (i - 1) * 60)
+    (0, 18) if i == 0 else (60 + (i - 1) * 60, 78 + (i - 1) * 60)
     for i in range(TOTAL_CHALLENGES)
 ]
 
@@ -113,6 +125,21 @@ CHAR_NOTIFY_UUID = "abcd1234-ab12-cd34-ef56-abcdef123457"
 INTENSIDAD_ARIADNE = 150            # Intensidad de la vibración
 DELAY_ARIADNE = 200                 # Duración / retardo de la vibración (ms)
 BLE_SCAN_TIMEOUT = 10               # Segundos buscando el dispositivo
+
+# ===== CRONÓMETRO DE ETAPAS (CONSOLA) =====
+STAGE_TIMER_PRINT = False            # Imprime en consola la duración de cada etapa (solo al terminar cada una)
+STAGE_BASELINE_END = "HIDDEN"       # "HIDDEN": el baseline termina cuando el cuadro negro ya desapareció por completo
+                                    # "FADING_OUT": termina cuando el cuadro empieza a desvanecerse
+
+# ===== BEEP DE INICIO DE TAREA =====
+BEEP_ENABLED = False
+BEEP_FREQ_HZ = 700                  # Frecuencia del tono (Hz)
+BEEP_DURATION_S = 0.3               # Duración del tono (s)
+BEEP_VOLUME = 0.6                   # 0.0 a 1.0 (volumen dentro de la app; el volumen del sistema también influye)
+BEEP_FADE_S = 0.005                 # Rampa de entrada/salida para evitar "clics" (s)
+BEEP_SAMPLE_RATE = 44100            # Hz
+BEEP_AUDIO_DEVICE = None            # None = salida de audio predeterminada del sistema (recomendado, no hay que elegir nada)
+                                    # Para forzar otra salida: nombre exacto del dispositivo (str)
 
 # ===== GUARDADO DE RESULTADOS =====
 SCORES_FOLDER_NAME = "scores"
@@ -143,6 +170,7 @@ class Game:
 
     def __init__(self):
         pygame.init()
+        self._init_beep()
         self.running, self.playing = True, False
         pygame.display.set_caption("Interfaz Gamificada - Cambio Menú")
 
@@ -697,10 +725,7 @@ class Game:
         self.hand_mode = mode
         self.assets["hand"] = load_images(self._get_hand_folder())
         self.hand_frames = self.assets["hand"]
-        self.hand_frame_idx = 0
-        self.hand_timer = 0.0
-        self.hand_rest_timer = 0.0
-        self.hand_is_animating = True
+        self._hand_restart()
 
     def toggle_hand_mode(self):
         self.set_hand_mode("ZURDO" if self.hand_mode == "DIESTRO" else "DIESTRO")
@@ -769,8 +794,6 @@ class Game:
     BALLOON_POP_FRAME_DURATION = 0.1     # Segundos por cuadro de la animación de reventar
 
     HAND_OFFSET_TILES_Y = 8.5            # Altura de la mano respecto al globo (en tiles)
-    HAND_FRAME_DURATION = 0.18           # Segundos por cuadro de la animación de la mano
-    HAND_REST_DURATION = 3.0             # Tiempo, en segundos, que la mano permanece en reposo
 
     BRIDGE_W_TILES = 10                  # Ancho del bloque de hielo (tiles)
     BRIDGE_H_TILES = 3                   # Alto del bloque de hielo (tiles)
@@ -853,7 +876,7 @@ class Game:
     # =========================================================================
     TILE_SIZE = 16
     MAP_FILE = "map.json"
-    PLAYER_START_POS = (0, 170)
+    PLAYER_START_POS = (-10*16, 175)
     PLAYER_SIZE = (32, 48)
 
     def reset_level(self, level_id: int):
@@ -873,6 +896,7 @@ class Game:
         self.scroll = [0.0, 0.0]
         self.fixed_scroll_y = None
         self.camera_delta_x = 0.0
+        self._snap_camera_to_player()      # <-- NUEVO
 
         self.auto_speed = AUTO_SPEED
         self.auto_speed_normal = self.auto_speed
@@ -891,10 +915,7 @@ class Game:
         self.state = self.RUNNING
 
         self.hand_frames = self.assets["hand"]
-        self.hand_frame_idx = 0
-        self.hand_timer = 0.0
-        self.hand_rest_timer = 0.0
-        self.hand_is_animating = True
+        self._hand_restart()
         self.hand_active = False
 
         self.hearts_alpha = 0
@@ -917,6 +938,8 @@ class Game:
         self.go_walk_end_x = None
 
         # self.bg_speed_current = 0.0
+
+        self._stage_reset()
 
     # =========================================================================
     # BUCLE PRINCIPAL
@@ -993,7 +1016,7 @@ class Game:
 
             self._update_camera()
             self._update_background(frame_dt)
-            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+            render_scroll = (math.floor(self.scroll[0]), math.floor(self.scroll[1]))
 
             # ===== RENDER: JUGADOR, TILEMAP, BLOQUES Y MANO =====
             self.player.render(self.display, offset=render_scroll)
@@ -1004,7 +1027,7 @@ class Game:
             # ===== MOVIMIENTO Y ESTADOS DEL JUGADOR =====
             move_x = self._compute_move_x()
             self._start_escape_jump()
-            self.player.update(self.tilemap, (move_x, 0))
+            self.player.update(self.tilemap, (move_x, 0))            
             self._apply_life_loss()
             self._finish_escape_jump()
             self._update_game_over_walk()
@@ -1021,6 +1044,7 @@ class Game:
             show_end = self._is_end_screen()
             self._update_fades(show_end, frame_dt)
             self._update_progress_messages(show_end, frame_dt)
+            self._update_stage_timer(show_end)
             self._draw_hud(show_end)
             self._draw_progress_messages(show_end)
             if show_end:
@@ -1061,6 +1085,7 @@ class Game:
 
         self.state = self.RESOLVED
         self.hand_active = False
+        self._stage_event("espacio pulsado (globo reventado)")
         if not cur["scored"]:
             elapsed = max(0.0, self.time_limit - self.time_left)
             gained = int(max(0.0, (self.time_limit - elapsed)) * MAX_SCORE_PER_CHALLENGE / self.time_limit)
@@ -1122,6 +1147,14 @@ class Game:
         self.camera_delta_x = (
             self.scroll[0] - previous_scroll_x
         )
+    
+    def _snap_camera_to_player(self):
+        """Coloca la cámara directamente en su encuadre final, sin deslizamiento inicial."""
+        self.scroll[0] = (
+            self.player.rect().centerx
+            - self.display.get_width() * self.CAMERA_ANCHOR_X
+        )
+        self.camera_delta_x = 0.0
 
     def _update_background(self, frame_dt):
         """
@@ -1155,17 +1188,83 @@ class Game:
                     ice_img = ice[self.BRIDGE_VARIANTS[iy][ix]]
                     self.display.blit(ice_img, (wx - render_scroll[0], wy - render_scroll[1]))
 
+    # ----- Animación de la mano -----
+    def _hand_restart(self):
+        """Reinicia la secuencia: la mano aparece abierta y espera HAND_START_DELAY_S."""
+        self.hand_phase = "DELAY"
+        self.hand_frame_idx = 0
+        self.hand_timer = 0.0
+
+    def _hand_closed_range(self):
+        """Índices (desde 0) del primer y último frame con la mano cerrada."""
+        n = len(self.hand_frames)
+        first = max(0, min(n - 1, HAND_CLOSED_FIRST_FRAME - 1))
+        last = max(first, min(n - 1, HAND_CLOSED_LAST_FRAME - 1))
+        return first, last
+
+    def _hand_enter(self, phase):
+        """Cambia de fase y coloca el frame inicial de esa fase."""
+        n = len(self.hand_frames)
+        first, last = self._hand_closed_range()
+        if phase == "CLOSING" and first == 0:
+            phase = "HOLD"
+        if phase == "OPENING" and last + 1 >= n:
+            phase = "REST"
+        self.hand_phase = phase
+        self.hand_frame_idx = {
+            "DELAY": 0,
+            "CLOSING": 0,
+            "HOLD": first,
+            "OPENING": last + 1,
+            "REST": 0,
+        }[phase]
+
+    def _update_hand_animation(self, dt):
+        """
+        Fases: DELAY (mano abierta) -> CLOSING (frames hasta antes del puño)
+               -> HOLD (puño cerrado) -> OPENING (frames de apertura)
+               -> REST (mano abierta) -> CLOSING ...
+        """
+        n = len(self.hand_frames)
+        first, _last = self._hand_closed_range()
+        frame_dur = max(HAND_FRAME_DURATION_S, 0.001)
+        durations = {
+            "DELAY": max(HAND_START_DELAY_S, 0.0),
+            "CLOSING": frame_dur,
+            "HOLD": max(HAND_CLOSED_HOLD_S, 0.0),
+            "OPENING": frame_dur,
+            "REST": max(HAND_REPEAT_INTERVAL_S, 0.0),
+        }
+
+        self.hand_timer += dt
+
+        # El for acota las iteraciones (evita bucles infinitos si todas las duraciones fueran 0).
+        for _ in range(50):
+            phase = self.hand_phase
+            if self.hand_timer < durations[phase]:
+                break
+            self.hand_timer -= durations[phase]
+
+            if phase == "DELAY":
+                self._hand_enter("CLOSING")
+            elif phase == "CLOSING":
+                if self.hand_frame_idx + 1 < first:
+                    self.hand_frame_idx += 1
+                else:
+                    self._hand_enter("HOLD")
+            elif phase == "HOLD":
+                self._hand_enter("OPENING")
+            elif phase == "OPENING":
+                if self.hand_frame_idx + 1 < n:
+                    self.hand_frame_idx += 1
+                else:
+                    self._hand_enter("REST")
+            else:  # REST
+                self._hand_enter("CLOSING")
+
     def _update_and_render_hand(self, frame_dt, render_scroll):
-        """
-        Actualiza y dibuja exclusivamente la animación de cierre de mano.
-    
-        La secuencia es:
-            1. Reproducir todos los cuadros.
-            2. Regresar al primer cuadro.
-            3. Esperar HAND_REST_DURATION segundos.
-            4. Volver a reproducir la animación.
-        """
-    
+        """Actualiza y dibuja la animación de cierre/apertura de la mano (ver constantes HAND_*)."""
+
         # La mano solamente aparece mientras el jugador espera
         # una respuesta en un desafío activo.
         if not (
@@ -1174,55 +1273,13 @@ class Game:
             and self.active_challenge
         ):
             return
-    
+
         # Protección por si la carpeta de la mano no contiene imágenes.
         if not self.hand_frames:
             return
-    
-        # =========================================================
-        # FASE 1: ANIMACIÓN DE CIERRE
-        # =========================================================
-        if self.hand_is_animating:
-    
-            self.hand_timer += frame_dt
-    
-            # Se utiliza while para no perder cuadros si un fotograma
-            # del juego tarda más de lo esperado.
-            while self.hand_timer >= self.HAND_FRAME_DURATION:
-    
-                self.hand_timer -= self.HAND_FRAME_DURATION
-                self.hand_frame_idx += 1
-    
-                # Si ya se mostraron todos los cuadros,
-                # comienza la fase de reposo.
-                if self.hand_frame_idx >= len(self.hand_frames):
-    
-                    # Durante el reposo se muestra el primer cuadro,
-                    # correspondiente a la posición inicial de la mano.
-                    self.hand_frame_idx = 0
-    
-                    self.hand_is_animating = False
-                    self.hand_rest_timer = 0.0
-                    self.hand_timer = 0.0
-    
-                    break
-    
-        # =========================================================
-        # FASE 2: REPOSO ENTRE ANIMACIONES
-        # =========================================================
-        else:
-    
-            self.hand_rest_timer += frame_dt
-    
-            # Cuando termina el reposo, se inicia nuevamente
-            # la animación desde el primer cuadro.
-            if self.hand_rest_timer >= self.HAND_REST_DURATION:
-    
-                self.hand_rest_timer = 0.0
-                self.hand_timer = 0.0
-                self.hand_frame_idx = 0
-                self.hand_is_animating = True
-    
+
+        self._update_hand_animation(frame_dt)
+
         # =========================================================
         # DIBUJADO DE LA MANO
         # =========================================================
@@ -1291,10 +1348,7 @@ class Game:
                     cur["press_count"] = 0
                 
                     self.hand_active = True
-                    self.hand_frame_idx = 0
-                    self.hand_timer = 0.0
-                    self.hand_rest_timer = 0.0
-                    self.hand_is_animating = True
+                    self._hand_restart()
 
                 self.state = self.WAITING
                 self.time_left = self.time_limit
@@ -1379,6 +1433,7 @@ class Game:
 
         self.state = self.FAILED
         self.hand_active = False
+        self._stage_event("tiempo agotado (sin pulsacion)")
         failed_stop_tile = self.stop_tiles[self.stop_index]
         self.escape_x_px = (failed_stop_tile + self.ESCAPE_END_OFFSET_TILES) * self.tile_size
 
@@ -1455,6 +1510,168 @@ class Game:
                 self.state = self.RUNNING
                 self.advance_stop()
                 self.hand_active = False
+
+    # =========================================================================
+    # BEEP DE INICIO DE TAREA
+    # =========================================================================
+    def _init_beep(self):
+        """
+        Reinicia el mezclador de audio con parámetros fijos y genera el beep en memoria.
+        No usa archivos ni selección de bocinas: sale por el dispositivo predeterminado del SO.
+        """
+        self.beep_sound = None
+        if not BEEP_ENABLED:
+            return
+        try:
+            if pygame.mixer.get_init():
+                pygame.mixer.quit()
+            kwargs = dict(frequency=BEEP_SAMPLE_RATE, size=-16, channels=2, buffer=512)
+            if BEEP_AUDIO_DEVICE:
+                kwargs["devicename"] = BEEP_AUDIO_DEVICE
+            try:
+                pygame.mixer.init(allowedchanges=0, **kwargs)   # fuerza el formato pedido en cualquier equipo
+            except TypeError:
+                pygame.mixer.init(**kwargs)
+            rate, _fmt, channels = pygame.mixer.get_init()
+            self.beep_sound = self._build_beep_sound(rate, channels)
+            print(f"[beep] Audio listo ({rate} Hz, {channels} canales, "
+                  f"dispositivo: {BEEP_AUDIO_DEVICE or 'predeterminado del sistema'}). "
+                  f"Tono: {BEEP_FREQ_HZ} Hz, {BEEP_DURATION_S} s")
+        except Exception as error:
+            self.beep_sound = None
+            print(f"[beep] No se pudo inicializar el audio; el juego continua sin beep: {error}")
+
+    def _build_beep_sound(self, rate, channels):
+        """Sintetiza una onda senoidal de 16 bits con rampa de entrada/salida."""
+        n = max(1, int(rate * BEEP_DURATION_S))
+        fade = max(1, int(rate * BEEP_FADE_S))
+        amp = 0.9 * 32767
+        samples = array.array("h")
+        for i in range(n):
+            env = min(1.0, i / fade, (n - 1 - i) / fade)
+            v = int(amp * env * math.sin(2.0 * math.pi * BEEP_FREQ_HZ * i / rate))
+            samples.extend([v] * channels)
+        sound = pygame.mixer.Sound(buffer=samples.tobytes())
+        sound.set_volume(max(0.0, min(1.0, BEEP_VOLUME)))
+        return sound
+
+    def play_beep(self):
+        """Reproduce el beep sin bloquear el juego. Devuelve True si se reprodujo."""
+        if self.beep_sound is None:
+            return False
+        try:
+            self.beep_sound.play()
+            return True
+        except pygame.error as error:
+            print(f"[beep] Error al reproducir: {error}")
+            return False
+
+    # =========================================================================
+    # CRONÓMETRO DE ETAPAS (CONSOLA)
+    #   INICIO -> BASELINE -> ATENCION -> TAREA -> REPOSO -> BASELINE -> ...
+    #   BASELINE : mientras el cuadro negro con el mensaje está visible
+    #   ATENCION : cuadro desaparecido, el jugador avanza hasta el desafío
+    #   TAREA    : desde que el jugador se detiene en el desafío (suena el beep)
+    #              hasta que vuelve a avanzar (incluye globo, puente o fallo)
+    #   REPOSO   : avanza hasta que vuelve a aparecer el mensaje (o termina el nivel)
+    # =========================================================================
+    _STAGES_WITH_CYCLE = ("BASELINE", "ATENCION", "TAREA", "REPOSO")
+
+    def _stage_reset(self):
+        self._stage = None                  # se arranca en la primera llamada del bucle
+        self._stage_cycle = 0               # número de desafío (0 = antes del primer baseline)
+        self._stage_t0 = 0.0
+        self._stage_level_t0 = time.perf_counter()
+        self._stage_durations = {}          # {desafío: {etapa: segundos}}
+
+    def _stage_level_time(self):
+        return time.perf_counter() - self._stage_level_t0
+
+    def _stage_print(self, text):
+        if STAGE_TIMER_PRINT:
+            print(text)
+
+    def _baseline_message_active(self):
+        if STAGE_BASELINE_END == "FADING_OUT":
+            return self.msg_state in ("FADING_IN", "SHOWN")
+        return self.msg_state != "HIDDEN"
+
+    def _compute_stage(self, show_end):
+        if show_end:
+            return "FIN"
+        if self.state == self.RUNNING:
+            if self._baseline_message_active():
+                return "BASELINE"
+            if self._stage == "BASELINE":
+                return "ATENCION"
+            if self._stage == "TAREA":
+                return "REPOSO"
+            return self._stage
+        if self.state in (self.WAITING, self.RESOLVED, self.FAILED):
+            return "TAREA"
+        return self._stage
+
+    def _update_stage_timer(self, show_end):
+        now = time.perf_counter()
+
+        if self._stage is None:
+            self._stage = "INICIO"
+            self._stage_t0 = now
+            self._stage_print("")
+            self._stage_print(f"===== NIVEL {self.selected_level}: cronometro de etapas "
+                              f"(tiempo relativo por etapa | absoluto por nivel) =====")
+            self._stage_print(f"[nivel {0.0:7.2f} s] INICIO")
+            return
+
+        new_stage = self._compute_stage(show_end)
+        if new_stage != self._stage:
+            self._change_stage(new_stage, now)
+
+    def _change_stage(self, new_stage, now):
+        old_stage = self._stage
+        duration = now - self._stage_t0
+        self._stage_durations.setdefault(self._stage_cycle, {})[old_stage] = duration
+
+        if new_stage == "BASELINE":
+            self._stage_cycle += 1
+
+        self._stage = new_stage
+        self._stage_t0 = now
+
+        label = f"(desafio {self._stage_cycle}/{TOTAL_CHALLENGES})" if new_stage in self._STAGES_WITH_CYCLE else ""
+        line = (f"[nivel {self._stage_level_time():7.2f} s] {new_stage:<9} inicia {label} "
+                f"| {old_stage} duro {duration:.2f} s")
+
+        if new_stage == "TAREA" and self.play_beep():
+            line += f" | BEEP {BEEP_FREQ_HZ} Hz, {BEEP_DURATION_S} s"
+        self._stage_print(line)
+
+        if new_stage == "FIN":
+            self._print_stage_summary()
+
+    def _stage_event(self, text):
+        """Marca un evento puntual (pulsación, tiempo agotado) con el tiempo transcurrido en la etapa actual."""
+        if self._stage is None:
+            return
+        elapsed = time.perf_counter() - self._stage_t0
+        self._stage_print(f"[nivel {self._stage_level_time():7.2f} s]    * {text} "
+                          f"-> {elapsed:.2f} s desde que inicio {self._stage}")
+
+    def _print_stage_summary(self):
+        if not STAGE_TIMER_PRINT:
+            return
+        d = self._stage_durations
+        stages = self._STAGES_WITH_CYCLE
+        print("-" * 56)
+        print("RESUMEN DE ETAPAS (segundos)")
+        if "INICIO" in d.get(0, {}):
+            print(f"INICIO (hasta el primer baseline): {d[0]['INICIO']:.2f}")
+        print(f"{'desafio':<9}" + "".join(f"{s:>11}" for s in stages))
+        for cycle in sorted(c for c in d if c > 0):
+            cells = [f"{d[cycle][s]:.2f}" if s in d[cycle] else "-" for s in stages]
+            print(f"{cycle:<9}" + "".join(f"{c:>11}" for c in cells))
+        print(f"Tiempo total del nivel: {self._stage_level_time():.2f} s")
+        print("-" * 56)
 
     # ----- Fades y mensajes -----
     def _update_fades(self, show_end, frame_dt):
