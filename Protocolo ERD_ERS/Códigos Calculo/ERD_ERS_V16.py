@@ -45,20 +45,20 @@ else:
 # VARIABLES MODIFICABLES
 # =============================================================================
 PARTICIPANTES_A_ANALIZAR = {
-    "SK1": False,
+    "SK1": True,
     "SK2": True,
-    "SK3": False,
-    "SV1": False,
+    "SK3": True,
+    "SV1": True,
     "SV2": True,
-    "SV3": False,
+    "SV3": True,
 }
 
 CARPETAS_A_ANALIZAR = {
-    "ME": False,
+    "ME": True,
     "MI": True,
 }
 
-LATERALIDAD = "zurdo"                                     # "diestro" o "zurdo"
+LATERALIDAD = "diestro"                                     # "diestro" o "zurdo"
 SEMILLA_PRUEBA_ALEATORIA = 1507                             # None = seleccion distinta en cada ejecucion
 
 # --- Figuras -----------------------------------------------------------------
@@ -74,7 +74,7 @@ BANDAS = {
 # Subbandas Delimitadas
 BANDAS_ANALISIS = {
     "Ritmo Mu":    (10.0, 13.0),
-    "Ritmo Beta":  (20.0, 25.0),
+    "Ritmo Beta":  (13.0, 30.0),
 }
 
 # --- Preprocesamiento --------------------------------------------------------
@@ -86,7 +86,7 @@ IC_TO_REMOVE = None
 USAR_LAPLACIANO = True
 
 # --- ERSP con Morlet ---------------------------------------------------------
-FREQS_MORLET = np.arange(7.0, 31.0, 1.0)                    # rango del escalograma
+FREQS_MORLET = np.arange(8.0, 30.0, 1.0)                    # rango del escalograma
 N_CYCLES_MORLET_TEMPORAL = np.linspace(6, 15, len(FREQS_MORLET))
 N_CYCLES_MORLET_FRECUENCIAL = np.linspace(14, 40, len(FREQS_MORLET))
 LIMITE_ERSP_DB = 5.0                                       # p. ej. 3.0 para fijar +-3 dB; None = automatico
@@ -102,8 +102,8 @@ LIMITES_RELACION_MU_BETA = None                             # igual que LIMITES_
 # --- Graficas a generar ------------------------------------------------------
 GENERAR_GRAFICAS = {
     "1_Resultados_ERD_ERS": {
-        "Escalogramas Temporales": False,
-        "Desviacion Estandar Escalogramas Temporales": True,
+        "Escalogramas Temporales": True,
+        "Desviacion Estandar Escalogramas Temporales": False,
         "Escalogramas Frecuenciales": False,
         
         "Relacion Mu Beta": False,
@@ -122,8 +122,8 @@ GENERAR_GRAFICAS = {
         "Ritmo Mu Empalmado Delimitado": False,
     },
     "2_Resultados_ERD_ERS_Laplaciano": {
-        "Escalogramas Temporales": False,
-        "Desviacion Estandar Escalogramas Temporales": True,
+        "Escalogramas Temporales": True,
+        "Desviacion Estandar Escalogramas Temporales": False,
         "Escalogramas Frecuenciales": False,
         
         "Relacion Mu Beta": False,

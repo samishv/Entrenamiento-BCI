@@ -132,7 +132,7 @@ STAGE_BASELINE_END = "HIDDEN"       # "HIDDEN": el baseline termina cuando el cu
                                     # "FADING_OUT": termina cuando el cuadro empieza a desvanecerse
 
 # ===== BEEP DE INICIO DE TAREA =====
-BEEP_ENABLED = False
+BEEP_ENABLED = True
 BEEP_FREQ_HZ = 700                  # Frecuencia del tono (Hz)
 BEEP_DURATION_S = 0.3               # Duración del tono (s)
 BEEP_VOLUME = 0.6                   # 0.0 a 1.0 (volumen dentro de la app; el volumen del sistema también influye)
