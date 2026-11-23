@@ -45,7 +45,7 @@ import numpy as np
 
 from psychopy import prefs
 #prefs.hardware['audioDevice'] = 'Altavoces (2- Realtek(R) Audio)'
-prefs.hardware['audioDevice'] = 'Altavoces (Realtek(R) Audio)'
+#prefs.hardware['audioDevice'] = 'Altavoces (Realtek(R) Audio)'
 prefs.hardware['audioLib'] = ['ptb', 'sounddevice']   # antes de importar sound
 prefs.hardware['audioLatencyMode'] = 3
 from psychopy import visual, core, event, sound, gui

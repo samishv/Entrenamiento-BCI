@@ -13,3 +13,22 @@
 9. que el periodo de tiempo aumente para que no agarre de bajada a los usuarios en los beeps, ósea que se muestre la pantalla pero que luego sea el beep (pantalla de las 3 pulsaciones)
 
 12. que a todas las pantallas de las instrucciones se agregue una linea azul
+
+# ─── Paleta ──────────────────────────────────────────────────────────────────
+BG_MENU        = "#0D1B2A"
+BG_LIGHT       = "#121B24"
+CARD_WHITE     = "#162840"
+GREEN_MAIN     = "#00C4A0"  # turquesa — acción
+GREEN_LIGHT    = "#0B2B3B"
+GREEN_ZONE     = "#124453"
+NAVY           = "#080F1A"
+TEXT_MUTED     = "#6A9AB0"
+TEXT_MUTEDPLUS = "#3A5A70"
+PROG_BG        = "#0E2035"
+ZONE_BORDER    = "#00C4A0"
+WARN_RED       = "#FF6B6B"  # coral — alerta
+TEAL           = "#38BDF8"  # azul cielo — config
+GREEN          = "#00C4A0"
+RED_DOT        = "#FF6B6B"
+GRAY_TEXT      = "#DEE0E3"
+DARK_TEXT      = "#FCFEFF"
