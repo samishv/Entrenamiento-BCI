@@ -44,8 +44,8 @@ from datetime import datetime
 import numpy as np
 
 from psychopy import prefs
-#prefs.hardware['audioDevice'] = 'Altavoces (2- Realtek(R) Audio)'
-#prefs.hardware['audioDevice'] = 'Altavoces (Realtek(R) Audio)'
+
+prefs.hardware['audioDevice'] = 'Altavoces (Realtek(R) Audio)' # Compu LIPS
 prefs.hardware['audioLib'] = ['ptb', 'sounddevice']   # antes de importar sound
 prefs.hardware['audioLatencyMode'] = 3
 from psychopy import visual, core, event, sound, gui
@@ -247,7 +247,7 @@ class Retroalimentacion:
         # Líneas guía y etiquetas del eje Y
         marcas = np.arange(0.0, Y_MAX_PCT + 1e-9, self.PASO_GRID)
         self.grid = lineas_punteadas(win, -W / 2, W / 2, [self._y(m) for m in marcas],
-                                     TEXT_MUTED, opacity=0.45)
+                                     TEXT_MUTED, opacity=0.25)
         self.etiquetas = [visual.TextStim(win, text=f'{m:.0f}', pos=(-W / 2 - 0.025, self._y(m)),
                                           height=0.026, color=TEXT_MUTED, font=FUENTE,
                                           anchorHoriz='right') for m in marcas]
@@ -529,7 +529,7 @@ def main():
             esperar('Calibración de fuerza máxima',
                     '1) No aprietes.\n\n'
                     '2) Aprieta lo más fuerte que puedas.',
-                    pista='ESPACIO · Comenzar →')
+                    pista='Comenzar')
             medir_tara()
 
             pico, primero = 0.0, True
@@ -601,7 +601,7 @@ def main():
     def esperar_cierre(titulo, cuerpo='', color=GREEN_MAIN):
         """Pantalla final: espera ESPACIO (o ESC) sin lanzar Abortar.
         Da tiempo a pulsar Stop en LabRecorder antes de cerrar los outlets."""
-        crear_panel(titulo, cuerpo, 'ESPACIO · Cerrar', color)()
+        crear_panel(titulo, cuerpo, 'Cerrar', color)()
         win.flip()
         print("[INFO] >>> Pulsa STOP en LabRecorder (y detén FreeEMG) y luego "
               "ESPACIO en la ventana de PsychoPy para cerrar.")

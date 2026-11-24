@@ -33,7 +33,8 @@ ENTORNO_EJECUCION = "SPYDER"            # "SPYDER" o "VSCODE".
 
 if ENTORNO_EJECUCION.strip().upper() == "SPYDER":
     CARPETA_SIGNALS = Path(
-        r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI"
+        #r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI"
+        r"C:\Users\lipsp\Documents\GitHub\Entrenamiento-BCI"
         r"\Protocolo ERD_ERS\Signals"
     )
 elif ENTORNO_EJECUCION.strip().upper() == "VSCODE":
@@ -96,14 +97,14 @@ USAR_LAPLACIANO = True
 MODO_CWT = "FRECUENCIAS"                                   # "FRECUENCIAS" ó "ESCALAS"
 WAVELET_CWT = "cmor3.5-1.0"                                # cmorB-C
 
-# FRECUENCIAS" es decir Escalas: 31.25 a 8.33
+# FRECUENCIAS" es decir Escalas: 31.25 a 8.33 de la 3 a la 5
 FRECUENCIA_CWT_MIN = 8.0
 FRECUENCIA_CWT_MAX = 30.0
 SUBESCALAS_POR_OCTAVA = 12
 
 # Se usa solamente cuando MODO_CWT = "ESCALAS".
 # ESCALAS_CWT_PROPUESTAS = np.arange(4.0, 251.0, 1.0)
-ESCALAS_CWT_PROPUESTAS = np.array([8.3333, 9, 10, 12, 16, 20, 25, 31.25])
+ESCALAS_CWT_PROPUESTAS = np.array([8.3333, 9, 10, 12, 16, 20, 25, 31.25])#escalas 3 y 4 con 12 dub escalas en cada una
 
 CWT_METODO = "fft"                                         # "fft" o "conv"
 CWT_DECIM = 4                                              # conserva 1 de cada 4 muestras temporales
@@ -620,6 +621,7 @@ def calcular_ersp(ensayos, calcular_desviacion=False):
         method=CWT_METODO,
         axis=-1,
     )
+    print(f" [CWT] coeficientes: {coeficientes.shape}, frecuencias: {frecuencias.shape}")
     potencias = np.abs(coeficientes) ** 2
     potencias = np.transpose(potencias, (1, 2, 0, 3))
     potencias = potencias[:, :, ORDEN_FRECUENCIAS_CWT, ::CWT_DECIM]
