@@ -50,8 +50,8 @@ os.environ.pop("SDL_VIDEO_CENTERED", None)
 
 # ===== JUGABILIDAD =====
 AUTO_SPEED = 1                      # Velocidad del autorun (px por frame) ERA 2
-FAIL_RETURN_SPEED = 1             # Velocidad del autorun mientras el jugador se recupera de un fallo ERA 1.2
-TOTAL_CHALLENGES = 3               # Cantidad de desafíos (globos) por nivel
+FAIL_RETURN_SPEED = 1               # Velocidad del autorun mientras el jugador se recupera de un fallo ERA 1.2
+TOTAL_CHALLENGES = 10               # Cantidad de desafíos (globos) por nivel
 FIRST_STOP_TILE = 38                # Tile donde se detiene el jugador en el primer desafío
 CHALLENGE_SPACING_TILES = 60        # Distancia (en tiles) entre un desafío y el siguiente
 MAX_PRESSES = 1                     # Pulsaciones necesarias para reventar un globo
@@ -172,7 +172,12 @@ class Game:
         pygame.init()
         self._init_beep()
         self.running, self.playing = True, False
-        pygame.display.set_caption("Interfaz Gamificada - Cambio Menú")
+        pygame.display.set_caption("Interfaz Gamificada - Rappingu")
+        
+        window_icon_path = os.path.join("data","images","menu","icon_window.png")
+        window_icon = pygame.image.load(window_icon_path)
+        window_icon = pygame.transform.smoothscale(window_icon, (64, 64))
+        pygame.display.set_icon(window_icon)
 
         # ===== VENTANA Y PANTALLA =====
         self.base_size = (480, 270)
@@ -778,13 +783,14 @@ class Game:
             ) % layer.get_width()
 
     def _draw_parallax(self):
+        screen_width = self.base_size[0]
         for i, layer in enumerate(self.bg_moving):
-            w = layer.get_width()
-            x = -self.bg_offsets[i]
-    
-            while x < self.base_size[0]:
-                self.display.blit(layer, (round(x), 0))
-                x += w
+            layer_width = layer.get_width()
+            start_x = -int(self.bg_offsets[i])
+            x = start_x
+            while x < screen_width:
+                self.display.blit(layer, (x, 0))
+                x += layer_width - 1
 
     # =========================================================================
     # DESAFÍOS: PARADAS, GLOBO, MANO Y BLOQUE DE HIELO FLOTANTE
@@ -1155,16 +1161,15 @@ class Game:
             - self.display.get_width() * self.CAMERA_ANCHOR_X
         )
         self.camera_delta_x = 0.0
-
+    
     def _update_background(self, frame_dt):
         """
-        Actualiza el parallax utilizando siempre el desplazamiento
-        real de la cámara, incluida su desaceleración.
+        Actualiza y dibuja el fondo parallax.
         """
-    
         self._update_parallax(self.camera_delta_x)
+        self.display.fill((0, 0, 0))
         self._draw_parallax()
-        
+            
     def _is_camera_motion_active(self):
         return (
             self.state in (self.RUNNING, self.FAILED)

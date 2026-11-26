@@ -33,8 +33,7 @@ ENTORNO_EJECUCION = "SPYDER"            # "SPYDER" o "VSCODE".
 
 if ENTORNO_EJECUCION.strip().upper() == "SPYDER":
     CARPETA_SIGNALS = Path(
-        #r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI"
-        r"C:\Users\lipsp\Documents\GitHub\Entrenamiento-BCI"
+        r"D:\luiso\Documentos\Luis\UPIITA\TT\Entrenamiento-BCI"
         r"\Protocolo ERD_ERS\Signals"
     )
 elif ENTORNO_EJECUCION.strip().upper() == "VSCODE":
@@ -46,12 +45,12 @@ else:
 # VARIABLES MODIFICABLES
 # =============================================================================
 PARTICIPANTES_A_ANALIZAR = {
-    "SK1": False,
+    "SK1": True,
     "SK2": True,
-    "SK3": False,
-    "SV1": False,
+    "SK3": True,
+    "SV1": True,
     "SV2": True,
-    "SV3": False,
+    "SV3": True,
 }
 
 CARPETAS_A_ANALIZAR = {
@@ -66,7 +65,7 @@ ANALISIS_DIAS = {
     "GENERAL": True,
 }
 
-LATERALIDAD = "zurdo"                                     # "diestro" o "zurdo"
+LATERALIDAD = "diestro"                                     # "diestro" o "zurdo"
 SEMILLA_PRUEBA_ALEATORIA = 1507                             # None = seleccion distinta en cada ejecucion
 
 # --- Figuras -----------------------------------------------------------------
@@ -100,7 +99,7 @@ WAVELET_CWT = "cmor3.5-1.0"                                # cmorB-C
 # FRECUENCIAS" es decir Escalas: 31.25 a 8.33 de la 3 a la 5
 FRECUENCIA_CWT_MIN = 8.0
 FRECUENCIA_CWT_MAX = 30.0
-SUBESCALAS_POR_OCTAVA = 12
+SUBESCALAS_POR_OCTAVA = 8
 
 # Se usa solamente cuando MODO_CWT = "ESCALAS".
 # ESCALAS_CWT_PROPUESTAS = np.arange(4.0, 251.0, 1.0)
@@ -130,18 +129,18 @@ GENERAR_GRAFICAS = {
         "Relacion Mu Beta Empalmadas Delimitadas": False,
         
         "Ritmo Beta": False,
-        "Ritmo Beta Delimitado": True,
+        "Ritmo Beta Delimitado": False,
         "Ritmo Beta Empalmado": False,
-        "Ritmo Beta Empalmado Delimitado": True,
+        "Ritmo Beta Empalmado Delimitado": False,
         
         "Ritmo Mu": False,
-        "Ritmo Mu Delimitado": True,
+        "Ritmo Mu Delimitado": False,
         "Ritmo Mu Empalmado": False,
-        "Ritmo Mu Empalmado Delimitado": True,
+        "Ritmo Mu Empalmado Delimitado": False,
     },
     "2_Resultados_ERD_ERS_Laplaciano": {
-        "Escalogramas": True,
-        "Desviacion Estandar Escalogramas": True,
+        "Escalogramas": False,
+        "Desviacion Estandar Escalogramas": False,
         
         "Relacion Mu Beta": False,
         "Relacion Mu Beta Delimitada": False,
@@ -149,14 +148,14 @@ GENERAR_GRAFICAS = {
         "Relacion Mu Beta Empalmadas Delimitadas": False,
         
         "Ritmo Beta": False,
-        "Ritmo Beta Delimitado": True,
+        "Ritmo Beta Delimitado": False,
         "Ritmo Beta Empalmado": False,
-        "Ritmo Beta Empalmado Delimitado": True,
+        "Ritmo Beta Empalmado Delimitado": False,
         
         "Ritmo Mu": False,
-        "Ritmo Mu Delimitado": True,
+        "Ritmo Mu Delimitado": False,
         "Ritmo Mu Empalmado": False,
-        "Ritmo Mu Empalmado Delimitado": True,
+        "Ritmo Mu Empalmado Delimitado": False,
     },
     "3_Resultados_Prueba_Aleatoria": {
         "Escalograma": False,
@@ -621,7 +620,7 @@ def calcular_ersp(ensayos, calcular_desviacion=False):
         method=CWT_METODO,
         axis=-1,
     )
-    print(f" [CWT] coeficientes: {coeficientes.shape}, frecuencias: {frecuencias.shape}")
+    # print(f" [CWT] coeficientes: {coeficientes.shape}, frecuencias: {frecuencias.shape}")
     potencias = np.abs(coeficientes) ** 2
     potencias = np.transpose(potencias, (1, 2, 0, 3))
     potencias = potencias[:, :, ORDEN_FRECUENCIAS_CWT, ::CWT_DECIM]

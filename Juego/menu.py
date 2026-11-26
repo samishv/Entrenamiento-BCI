@@ -272,8 +272,8 @@ class ConfigMenu(Menu):
     # =========================================================
     PREVIEW_RECT = pygame.Rect(300, 107, 120, 120)
     COLOR_PREVIEW_FRAME_MS = 300
-    HAND_PREVIEW_FRAME_MS = 180
-    ARIADNE_PREVIEW_FRAME_MS = 300
+    HAND_PREVIEW_FRAME_MS = 100
+    ARIADNE_PREVIEW_FRAME_MS = 17
 
     # =========================================================
     # ESCALAS DE LAS ANIMACIONES
@@ -284,6 +284,7 @@ class ConfigMenu(Menu):
     HAND_RIGHT_PREVIEW_FOLDER = os.path.join("data", "images", "entities", "hand")
     HAND_LEFT_PREVIEW_FOLDER = os.path.join("data", "images", "entities", "hand_left")
     ARIADNE_PREVIEW_FOLDER = os.path.join("data", "images", "entities", "disp_vib")
+    ARIADNE_OFF_IMAGE_PATH = os.path.join("data", "images", "menu", "disp_vib_off.png")
 
     def __init__(self, game):
         super().__init__(game)
@@ -305,6 +306,7 @@ class ConfigMenu(Menu):
         self.preview_hand_right_frames = []
         self.preview_hand_left_frames = []
         self.preview_ariadne_frames = []
+        self.preview_ariadne_off_frames = []
 
     def display_menu(self):
         self.run_display = True
@@ -387,13 +389,19 @@ class ConfigMenu(Menu):
 
 
     def _load_external_preview_frames(self):
-        """ Carga una sola vez las animaciones de las manos y ARIADNE. """
+        """Carga una sola vez las animaciones y la imagen estática de ARIADNE."""
         if self.preview_external_frames_loaded:
             return
-
         self.preview_hand_right_frames = self._load_preview_folder(self.HAND_RIGHT_PREVIEW_FOLDER)
         self.preview_hand_left_frames = self._load_preview_folder(self.HAND_LEFT_PREVIEW_FOLDER)
         self.preview_ariadne_frames = self._load_preview_folder(self.ARIADNE_PREVIEW_FOLDER)
+        try:
+            ariadne_off_image = pygame.image.load(self.ARIADNE_OFF_IMAGE_PATH).convert_alpha()
+            self.preview_ariadne_off_frames = [ariadne_off_image]
+    
+        except (FileNotFoundError, pygame.error) as error:
+            print(f"[MENU] No se pudo cargar " f"{self.ARIADNE_OFF_IMAGE_PATH}: {error}")
+            self.preview_ariadne_off_frames = []
         self.preview_external_frames_loaded = True
 
     def _update_preview_state(self):
@@ -418,9 +426,16 @@ class ConfigMenu(Menu):
             return (animation_key, frames, self.HAND_PREVIEW_FRAME_MS, self.HAND_PREVIEW_SCALE,)
 
         if self.preview_state == "BT":
-            animation_key = ("BT",self.game.bluetooth_enabled,)
-            return (animation_key, self.preview_ariadne_frames, self.ARIADNE_PREVIEW_FRAME_MS, self.ARIADNE_PREVIEW_SCALE,)
-
+            if self.game.bluetooth_enabled:
+                animation_key = ("BT", "ON")
+                frames = self.preview_ariadne_frames
+                frame_duration_ms = self.ARIADNE_PREVIEW_FRAME_MS
+            else:
+                animation_key = ("BT", "OFF")
+                frames = self.preview_ariadne_off_frames
+                frame_duration_ms = 1000
+            return (animation_key,frames,frame_duration_ms,self.ARIADNE_PREVIEW_SCALE,)
+        
         self._refresh_preview_frames()
         return (("COLOR", self.game.player_color),self.preview_idle_frames, self.COLOR_PREVIEW_FRAME_MS, self.COLOR_PREVIEW_SCALE,)
 
